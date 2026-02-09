@@ -3,7 +3,9 @@ import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { emailOTP } from 'better-auth/plugins';
 import { expo } from '@better-auth/expo';
+import dotenv from 'dotenv';
 
+dotenv.config();
 import { prisma } from './db.js';
 import { sendOTPEmail, sendResetPasswordEmail } from './email.js';
 import { passwordSchema } from './validation.js';
@@ -15,14 +17,16 @@ export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
   trustedOrigins: [
     process.env.BETTER_AUTH_TRUSTED_ORIGINS || 'http://localhost:5173',
-    'familytaxidriver://',
-    'familytaxiuser://',
+    'ftdriver://',
+    'ftuser://',
     // Development mode - Expo's exp:// scheme with local IP ranges
     ...(process.env.NODE_ENV === 'development'
       ? [
-          'exp://', // Trust all Expo URLs (prefix matching)
-          'exp://**', // Trust all Expo URLs (wildcard matching)
-          'exp://192.168.*.*:*/**', // Trust 192.168.x.x IP range with any port and path
+          'exp://*/*',
+          'exp://10.0.0.*:*/*',
+          'exp://192.168.*.*:*/*',
+          'exp://172.*.*.*:*/*',
+          'exp://localhost:*/*',
         ]
       : []),
   ],
@@ -57,11 +61,15 @@ export const auth = betterAuth({
       },
     },
   },
-  session: {
-    cookieCache: {
-      enabled: true,
-      maxAge: 5 * 60, // 5 minutes
-    },
+  // session: {
+  //   cookieCache: {
+  //     enabled: true,
+  //     maxAge: 5 * 60, // 5 minutes
+  //   },
+  // },
+  account: {
+    storeStateStrategy: 'database',
+    skipStateCookieCheck: true, // Required for proxy plugin
   },
   plugins: [
     expo(),

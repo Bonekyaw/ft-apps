@@ -38,6 +38,13 @@ const TABS_CONFIG = [
     icon: "schedule" as const,
     iconFilled: "schedule" as const,
   },
+  {
+    name: "profile" as const,
+    href: "/(tabs)/profile" as const,
+    label: "Profile",
+    icon: "person" as const,
+    iconFilled: "person" as const,
+  },
 ] as const;
 
 // ─── Animated Tab Button ─────────────────────────────────────────────────────

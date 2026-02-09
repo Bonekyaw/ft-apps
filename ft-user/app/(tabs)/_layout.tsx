@@ -56,6 +56,16 @@ export default function TabLayout() {
           />
           <Label>Activity</Label>
         </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name="profile">
+          <Icon
+            sf={{ default: "person", selected: "person.fill" }}
+            androidSrc={
+              <VectorIcon family={MaterialIcons} name="person" />
+            }
+          />
+          <Label>Profile</Label>
+        </NativeTabs.Trigger>
       </NativeTabs>
     </ThemeProvider>
   );

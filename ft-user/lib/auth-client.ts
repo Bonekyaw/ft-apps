@@ -34,8 +34,8 @@ const client = createAuthClient({
   baseURL: getBaseURL(),
   plugins: [
     expoClient({
-      scheme: "familytaxiuser",
-      storagePrefix: "familytaxiuser",
+      scheme: "ftuser",
+      storagePrefix: "ftuser",
       storage: SecureStore,
     }),
     emailOTPClient(),

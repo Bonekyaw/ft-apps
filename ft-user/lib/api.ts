@@ -1,6 +1,5 @@
 import { Platform } from "react-native";
 import axios, { type AxiosError, isAxiosError } from "axios";
-
 /**
  * Base URL for the backend API (same host as Better Auth).
  */
@@ -43,7 +42,7 @@ export const api = axios.create({
 export async function placesAutocomplete(
   search: string,
   sessionToken?: string,
-  location?: { latitude: number; longitude: number }
+  location?: { latitude: number; longitude: number },
 ): Promise<PlacesSuggestion[]> {
   const trimmed = search.trim();
   if (!trimmed) return [];
@@ -58,7 +57,10 @@ export async function placesAutocomplete(
     body.longitude = location.longitude;
   }
 
-  const { data } = await api.post<AutocompleteResponse>("/maps/autocomplete", body);
+  const { data } = await api.post<AutocompleteResponse>(
+    "/maps/autocomplete",
+    body,
+  );
   return data.suggestions ?? [];
 }
 
