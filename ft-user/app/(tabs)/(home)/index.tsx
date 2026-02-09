@@ -1,7 +1,6 @@
-
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { MapContainer } from '@/components/map';
+import React from "react";
+import { View, StyleSheet } from "react-native";
+import { MapContainer } from "@/components/map";
 
 export default function HomeScreen() {
   return (
