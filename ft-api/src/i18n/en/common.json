@@ -1,0 +1,10 @@
+{
+  "publicRoute": "Public route",
+  "validation": {
+    "passwordNotStrong": "Password not strong enough"
+  },
+  "auth": {
+    "signInFailed": "Please check your credentials and try again.",
+    "signUpFailed": "Please check your information and try again."
+  }
+}

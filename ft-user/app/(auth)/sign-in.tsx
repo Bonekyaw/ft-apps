@@ -14,7 +14,6 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Button, Input } from "@/components/ui";
-import { authClient } from "@/lib/auth-client";
 import {
   Brand,
   Colors,
@@ -22,11 +21,15 @@ import {
   Spacing,
   BorderRadius,
 } from "@/constants/theme";
+import { useTranslation } from "@/lib/i18n";
+import type { LocaleCode } from "@/lib/i18n";
+import { authClient } from "@/lib/auth-client";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function SignInScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const { t, locale, setLocale } = useTranslation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,15 +43,15 @@ export default function SignInScreen() {
     const newErrors: { email?: string; password?: string } = {};
 
     if (!email) {
-      newErrors.email = "Email is required";
+      newErrors.email = t("auth.errors.emailRequired");
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Please enter a valid email";
+      newErrors.email = t("auth.errors.emailInvalid");
     }
 
     if (!password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t("auth.errors.passwordRequired");
     } else if (password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = t("auth.errors.passwordMinLength");
     }
 
     setErrors(newErrors);
@@ -67,14 +70,14 @@ export default function SignInScreen() {
 
       if (result.error) {
         Alert.alert(
-          "Sign In Failed",
-          result.error.message ||
-            "Please check your credentials and try again.",
+          t("auth.errors.signInFailed"),
+          result.error.message || t("auth.errors.signInFailedMessage"),
         );
       }
-      // Protected routes will automatically redirect to (tabs) when session becomes valid
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "An unexpected error occurred");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : t("auth.errors.unexpectedError");
+      Alert.alert(t("auth.errors.error"), message);
     } finally {
       setLoading(false);
     }
@@ -83,23 +86,23 @@ export default function SignInScreen() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      // callbackURL is a path that gets converted to deep link (e.g., familytaxiuser://)
       await authClient.signIn.social({
         provider: "google",
         callbackURL: "/",
       });
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to sign in with Google");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : t("auth.errors.googleSignInFailed");
+      Alert.alert(t("auth.errors.error"), message);
     } finally {
       setGoogleLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-    // TODO: Implement forgot password flow
     Alert.alert(
-      "Coming Soon",
-      "Password reset functionality will be available soon.",
+      t("auth.errors.comingSoon"),
+      t("auth.errors.forgotPasswordSoon"),
     );
   };
 
@@ -116,6 +119,50 @@ export default function SignInScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Language switcher */}
+          <View style={styles.languageRow}>
+            <TouchableOpacity
+              style={[
+                styles.languageBtn,
+                locale === "en" && {
+                  borderColor: Brand.primary,
+                  backgroundColor: `${Brand.primary}15`,
+                },
+              ]}
+              onPress={() => setLocale("en" as LocaleCode)}
+            >
+              <Text
+                style={[
+                  styles.languageBtnText,
+                  { color: colors.textSecondary },
+                  locale === "en" && [styles.languageBtnTextActive, { color: Brand.primary }],
+                ]}
+              >
+                {t("profile.english")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.languageBtn,
+                locale === "my" && {
+                  borderColor: Brand.primary,
+                  backgroundColor: `${Brand.primary}15`,
+                },
+              ]}
+              onPress={() => setLocale("my" as LocaleCode)}
+            >
+              <Text
+                style={[
+                  styles.languageBtnText,
+                  { color: colors.textSecondary },
+                  locale === "my" && [styles.languageBtnTextActive, { color: Brand.primary }],
+                ]}
+              >
+                {t("profile.myanmar")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Header */}
           <View style={styles.header}>
             <View
@@ -127,18 +174,18 @@ export default function SignInScreen() {
               <Ionicons name="car-sport" size={48} color={Brand.primary} />
             </View>
             <Text style={[styles.title, { color: colors.text }]}>
-              Welcome Back
+              {t("auth.signIn.title")}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Sign in to continue to Family Taxi
+              {t("auth.signIn.subtitle")}
             </Text>
           </View>
 
           {/* Form */}
           <View style={styles.form}>
             <Input
-              label="Email"
-              placeholder="Enter your email"
+              label={t("auth.signIn.email")}
+              placeholder={t("auth.signIn.emailPlaceholder")}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -149,8 +196,8 @@ export default function SignInScreen() {
             />
 
             <Input
-              label="Password"
-              placeholder="Enter your password"
+              label={t("auth.signIn.password")}
+              placeholder={t("auth.signIn.passwordPlaceholder")}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -167,12 +214,12 @@ export default function SignInScreen() {
               <Text
                 style={[styles.forgotPasswordText, { color: Brand.primary }]}
               >
-                Forgot Password?
+                {t("auth.signIn.forgotPassword")}
               </Text>
             </TouchableOpacity>
 
             <Button
-              title="Sign In"
+              title={t("auth.signIn.submit")}
               onPress={handleSignIn}
               loading={loading}
               size="lg"
@@ -185,7 +232,7 @@ export default function SignInScreen() {
                 style={[styles.dividerLine, { backgroundColor: colors.border }]}
               />
               <Text style={[styles.dividerText, { color: colors.textMuted }]}>
-                or continue with
+                {t("auth.signIn.orContinueWith")}
               </Text>
               <View
                 style={[styles.dividerLine, { backgroundColor: colors.border }]}
@@ -194,7 +241,7 @@ export default function SignInScreen() {
 
             {/* Social Login */}
             <Button
-              title="Continue with Google"
+              title={t("auth.signIn.continueWithGoogle")}
               onPress={handleGoogleSignIn}
               variant="social"
               loading={googleLoading}
@@ -206,11 +253,11 @@ export default function SignInScreen() {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-              Don&apos;t have an account?{" "}
+              {t("auth.signIn.noAccount")}{" "}
             </Text>
             <TouchableOpacity onPress={() => router.push("/(auth)/sign-up")}>
               <Text style={[styles.linkText, { color: Brand.primary }]}>
-                Sign Up
+                {t("auth.signIn.signUp")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -231,6 +278,25 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.xl,
+  },
+  languageRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  languageBtn: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  languageBtnText: {
+    fontSize: FontSize.sm,
+  },
+  languageBtnTextActive: {
+    fontWeight: "600",
   },
   header: {
     alignItems: "center",

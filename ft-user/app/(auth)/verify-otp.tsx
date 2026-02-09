@@ -14,7 +14,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Button } from "@/components/ui";
-import { emailOtp } from "@/lib/auth-client";
 import {
   Brand,
   Colors,
@@ -22,6 +21,8 @@ import {
   Spacing,
   BorderRadius,
 } from "@/constants/theme";
+import { useTranslation } from "@/lib/i18n";
+import { emailOtp } from "@/lib/auth-client";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 const OTP_LENGTH = 6;
@@ -29,6 +30,7 @@ const OTP_LENGTH = 6;
 export default function VerifyOTPScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const { t } = useTranslation();
   const { email } = useLocalSearchParams<{ email: string }>();
 
   const [otp, setOtp] = useState<string[]>(new Array(OTP_LENGTH).fill(""));
@@ -88,12 +90,15 @@ export default function VerifyOTPScreen() {
   const handleVerify = async () => {
     const otpString = otp.join("");
     if (otpString.length !== OTP_LENGTH) {
-      Alert.alert("Invalid OTP", "Please enter the complete 6-digit code.");
+      Alert.alert(
+        t("auth.errors.invalidOtp"),
+        t("auth.errors.invalidOtpMessage"),
+      );
       return;
     }
 
     if (!email) {
-      Alert.alert("Error", "Email not found. Please try signing up again.");
+      Alert.alert(t("auth.errors.error"), t("auth.errors.emailNotFound"));
       router.replace("/(auth)/sign-up");
       return;
     }
@@ -107,26 +112,22 @@ export default function VerifyOTPScreen() {
 
       if (result.error) {
         Alert.alert(
-          "Verification Failed",
-          result.error.message || "Invalid or expired OTP. Please try again."
+          t("auth.errors.verificationFailed"),
+          result.error.message || t("auth.errors.verificationFailedMessage"),
         );
-        // Clear OTP inputs
         setOtp(new Array(OTP_LENGTH).fill(""));
         inputRefs.current[0]?.focus();
       } else {
         Alert.alert(
-          "Email Verified",
-          "Your email has been verified successfully. Please sign in to continue.",
-          [
-            {
-              text: "Sign In",
-              // onPress: () => router.replace("/(auth)/sign-in"),
-            },
-          ]
+          t("auth.errors.emailVerified"),
+          t("auth.errors.emailVerifiedMessage"),
+          [{ text: t("auth.signIn.submit") }],
         );
       }
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "An unexpected error occurred");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : t("auth.errors.unexpectedError");
+      Alert.alert(t("auth.errors.error"), message);
     } finally {
       setLoading(false);
     }
@@ -144,22 +145,23 @@ export default function VerifyOTPScreen() {
 
       if (result.error) {
         Alert.alert(
-          "Failed to Resend",
-          result.error.message || "Could not resend OTP. Please try again."
+          t("auth.errors.failedToResend"),
+          result.error.message || t("auth.errors.failedToResendMessage"),
         );
       } else {
         Alert.alert(
-          "OTP Sent",
-          "A new verification code has been sent to your email."
+          t("auth.errors.otpSent"),
+          t("auth.errors.otpSentMessage"),
         );
         setCountdown(60);
         setCanResend(false);
-        // Clear current OTP
         setOtp(new Array(OTP_LENGTH).fill(""));
         inputRefs.current[0]?.focus();
       }
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "An unexpected error occurred");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : t("auth.errors.unexpectedError");
+      Alert.alert(t("auth.errors.error"), message);
     } finally {
       setResendLoading(false);
     }
@@ -192,10 +194,10 @@ export default function VerifyOTPScreen() {
             <Ionicons name="mail-open" size={48} color={Brand.primary} />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>
-            Verify Your Email
+            {t("auth.verifyOtp.title")}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            We&apos;ve sent a 6-digit code to
+            {t("auth.verifyOtp.subtitle")}
           </Text>
           <Text style={[styles.email, { color: colors.text }]}>{email}</Text>
         </View>
@@ -229,7 +231,7 @@ export default function VerifyOTPScreen() {
 
         {/* Verify Button */}
         <Button
-          title="Verify Email"
+          title={t("auth.verifyOtp.verify")}
           onPress={handleVerify}
           loading={loading}
           disabled={otp.join("").length !== OTP_LENGTH}
@@ -240,7 +242,7 @@ export default function VerifyOTPScreen() {
         {/* Resend OTP */}
         <View style={styles.resendContainer}>
           <Text style={[styles.resendText, { color: colors.textSecondary }]}>
-            Didn&apos;t receive the code?{" "}
+            {t("auth.verifyOtp.resendPrompt")}{" "}
           </Text>
           {canResend ? (
             <TouchableOpacity
@@ -248,12 +250,12 @@ export default function VerifyOTPScreen() {
               disabled={resendLoading}
             >
               <Text style={[styles.resendLink, { color: Brand.primary }]}>
-                {resendLoading ? "Sending..." : "Resend"}
+                {resendLoading ? t("auth.verifyOtp.sending") : t("auth.verifyOtp.resend")}
               </Text>
             </TouchableOpacity>
           ) : (
             <Text style={[styles.countdown, { color: colors.textMuted }]}>
-              Resend in {countdown}s
+              {t("auth.verifyOtp.resendIn", { count: countdown })}
             </Text>
           )}
         </View>
@@ -266,7 +268,7 @@ export default function VerifyOTPScreen() {
             color={colors.textMuted}
           />
           <Text style={[styles.helpText, { color: colors.textMuted }]}>
-            Check your spam folder if you don&apos;t see the email
+            {t("auth.verifyOtp.helpText")}
           </Text>
         </View>
       </KeyboardAvoidingView>

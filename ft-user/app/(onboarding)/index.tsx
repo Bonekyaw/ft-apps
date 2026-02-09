@@ -23,14 +23,15 @@ import {
   Spacing,
   BorderRadius,
 } from "@/constants/theme";
+import { useTranslation } from "@/lib/i18n";
 
 const { width, height } = Dimensions.get("window");
 
 interface OnboardingSlide {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   accent?: string;
 }
 
@@ -38,33 +39,29 @@ const slides: OnboardingSlide[] = [
   {
     id: "1",
     icon: "car-sport",
-    title: "Book Your Ride",
-    description:
-      "Request a ride in seconds. Enter your destination and we'll connect you with nearby drivers.",
+    titleKey: "onboarding.slide1Title",
+    descriptionKey: "onboarding.slide1Description",
     accent: Brand.primary,
   },
   {
     id: "2",
     icon: "location",
-    title: "Track in Real-Time",
-    description:
-      "Watch your driver arrive on the map. Know exactly when your ride will reach you.",
+    titleKey: "onboarding.slide2Title",
+    descriptionKey: "onboarding.slide2Description",
     accent: "#10B981",
   },
   {
     id: "3",
     icon: "shield-checkmark",
-    title: "Safe & Verified",
-    description:
-      "All drivers are verified and trained. Your safety is our top priority.",
+    titleKey: "onboarding.slide3Title",
+    descriptionKey: "onboarding.slide3Description",
     accent: "#6366F1",
   },
   {
     id: "4",
     icon: "card",
-    title: "Easy Payments",
-    description:
-      "Pay with cash or card. Transparent pricing with no hidden fees.",
+    titleKey: "onboarding.slide4Title",
+    descriptionKey: "onboarding.slide4Description",
     accent: "#F59E0B",
   },
 ];
@@ -72,6 +69,7 @@ const slides: OnboardingSlide[] = [
 const LIGHT = Colors.light;
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
@@ -150,10 +148,13 @@ export default function OnboardingScreen() {
         </View>
 
         <Text style={styles.stepLabel}>
-          {index + 1} of {slides.length}
+          {t("onboarding.slideOf", {
+            current: index + 1,
+            total: slides.length,
+          })}
         </Text>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
+        <Text style={styles.title}>{t(item.titleKey)}</Text>
+        <Text style={styles.description}>{t(item.descriptionKey)}</Text>
       </View>
     </View>
   );
@@ -206,7 +207,7 @@ export default function OnboardingScreen() {
                 pressed && styles.skipBtnPressed,
               ]}
             >
-              <Text style={styles.skipText}>Skip</Text>
+              <Text style={styles.skipText}>{t("onboarding.skip")}</Text>
             </Pressable>
           ) : (
             <View style={styles.skipBtn} />
@@ -234,7 +235,11 @@ export default function OnboardingScreen() {
 
         <View style={styles.footer}>
           <Button
-            title={currentIndex === slides.length - 1 ? "Get Started" : "Next"}
+            title={
+              currentIndex === slides.length - 1
+                ? t("onboarding.getStarted")
+                : t("onboarding.next")
+            }
             onPress={handleNext}
             size="lg"
             style={styles.primaryButton}

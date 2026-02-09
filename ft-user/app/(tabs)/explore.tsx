@@ -4,9 +4,11 @@ import { StyleSheet } from "react-native";
 
 import { PlacesSearchBar } from "@/components/PlacesSearchBar";
 import type { PlacesSuggestion } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TabTwoScreen() {
+  const { t } = useTranslation();
   const [location, setLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -38,7 +40,7 @@ export default function TabTwoScreen() {
   return (
     <SafeAreaView style={styles.page}>
       <PlacesSearchBar
-        placeholder="Search for a place or address"
+        placeholder={t("explore.searchPlaceholder")}
         onSelectPlace={handleSelectPlace}
         location={location ?? undefined}
       />

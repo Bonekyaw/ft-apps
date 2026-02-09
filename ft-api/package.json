@@ -34,6 +34,7 @@
     "better-auth": "^1.4.18",
     "dotenv": "^17.2.4",
     "graphql": "^16.12.0",
+    "nestjs-i18n": "^10.6.0",
     "pg": "^8.18.0",
     "reflect-metadata": "^0.2.2",
     "resend": "^6.9.1",

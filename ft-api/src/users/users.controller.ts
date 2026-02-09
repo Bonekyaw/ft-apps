@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { I18n, I18nContext } from 'nestjs-i18n';
 import {
   Session,
   type UserSession,
@@ -14,9 +15,10 @@ export class UsersController {
   }
 
   @Get('public')
-  @AllowAnonymous() // Allow anonymous access
-  getPublic() {
-    return { message: 'Public route' };
+  @AllowAnonymous()
+  async getPublic(@I18n() i18n: I18nContext) {
+    const message = await i18n.t('common.publicRoute');
+    return { message };
   }
 
   @Get('optional')

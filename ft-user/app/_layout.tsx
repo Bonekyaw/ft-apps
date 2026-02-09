@@ -12,11 +12,13 @@ import {
   useOnboarding,
 } from "@/context/onboarding-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useTranslation } from "@/lib/i18n";
 import { Brand, Colors } from "@/constants/theme";
 
 function RootStack() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const { t } = useTranslation();
   const { data: session, isPending } = useSession();
   const { onboardingComplete, isLoading: isOnboardingLoading } = useOnboarding();
 
@@ -50,7 +52,7 @@ function RootStack() {
           options={{
             presentation: "modal",
             headerShown: true,
-            title: "Modal",
+            title: t("modal.title"),
           }}
         />
       </Stack.Protected>

@@ -14,7 +14,6 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Button, Input } from "@/components/ui";
-import { authClient, emailOtp } from "@/lib/auth-client";
 import {
   Brand,
   Colors,
@@ -22,11 +21,15 @@ import {
   Spacing,
   BorderRadius,
 } from "@/constants/theme";
+import { useTranslation } from "@/lib/i18n";
+import type { LocaleCode } from "@/lib/i18n";
+import { authClient, emailOtp } from "@/lib/auth-client";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function SignUpScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const { t, locale, setLocale } = useTranslation();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -50,30 +53,29 @@ export default function SignUpScreen() {
     } = {};
 
     if (!name.trim()) {
-      newErrors.name = "Name is required";
+      newErrors.name = t("auth.errors.nameRequired");
     } else if (name.trim().length < 2) {
-      newErrors.name = "Name must be at least 2 characters";
+      newErrors.name = t("auth.errors.nameMinLength");
     }
 
     if (!email) {
-      newErrors.email = "Email is required";
+      newErrors.email = t("auth.errors.emailRequired");
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Please enter a valid email";
+      newErrors.email = t("auth.errors.emailInvalid");
     }
 
     if (!password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t("auth.errors.passwordRequired");
     } else if (password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = t("auth.errors.passwordMinLength");
     } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      newErrors.password =
-        "Password must contain uppercase, lowercase, and number";
+      newErrors.password = t("auth.errors.passwordStrength");
     }
 
     if (!confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
+      newErrors.confirmPassword = t("auth.errors.confirmPasswordRequired");
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = t("auth.errors.passwordsDoNotMatch");
     }
 
     setErrors(newErrors);
@@ -93,13 +95,12 @@ export default function SignUpScreen() {
 
       if (result.error) {
         Alert.alert(
-          "Sign Up Failed",
-          result.error.message || "Please check your information and try again."
+          t("auth.errors.signUpFailed"),
+          result.error.message || t("auth.errors.signUpFailedMessage"),
         );
         return;
       }
 
-      // Send verification OTP to the user's email
       const otpResult = await emailOtp.sendVerificationOtp({
         email,
         type: "email-verification",
@@ -107,14 +108,14 @@ export default function SignUpScreen() {
 
       if (otpResult.error) {
         Alert.alert(
-          "Account Created",
-          "Your account was created but we couldn't send the verification email. Please try again from the sign-in page.",
+          t("auth.errors.accountCreated"),
+          t("auth.errors.accountCreatedNoEmail"),
           [
             {
-              text: "OK",
+              text: t("auth.ok"),
               onPress: () => router.replace("/(auth)/sign-in"),
             },
-          ]
+          ],
         );
         return;
       }
@@ -124,8 +125,10 @@ export default function SignUpScreen() {
         pathname: "/(auth)/verify-otp",
         params: { email },
       });
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "An unexpected error occurred");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : t("auth.errors.unexpectedError");
+      Alert.alert(t("auth.errors.error"), message);
     } finally {
       setLoading(false);
     }
@@ -134,13 +137,14 @@ export default function SignUpScreen() {
   const handleGoogleSignUp = async () => {
     setGoogleLoading(true);
     try {
-      // callbackURL is a path that gets converted to deep link (e.g., familytaxiuser://)
       await authClient.signIn.social({
         provider: "google",
         callbackURL: "/",
       });
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to sign up with Google");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : t("auth.errors.googleSignUpFailed");
+      Alert.alert(t("auth.errors.error"), message);
     } finally {
       setGoogleLoading(false);
     }
@@ -159,29 +163,73 @@ export default function SignUpScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Back Button */}
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+          {/* Top bar: back button + language switcher */}
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <View style={styles.languageRow}>
+              <TouchableOpacity
+                style={[
+                  styles.languageBtn,
+                  locale === "en" && {
+                    borderColor: Brand.primary,
+                    backgroundColor: `${Brand.primary}15`,
+                  },
+                ]}
+                onPress={() => setLocale("en" as LocaleCode)}
+              >
+                <Text
+                  style={[
+                    styles.languageBtnText,
+                    { color: colors.textSecondary },
+                    locale === "en" && [styles.languageBtnTextActive, { color: Brand.primary }],
+                  ]}
+                >
+                  {t("profile.english")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.languageBtn,
+                  locale === "my" && {
+                    borderColor: Brand.primary,
+                    backgroundColor: `${Brand.primary}15`,
+                  },
+                ]}
+                onPress={() => setLocale("my" as LocaleCode)}
+              >
+                <Text
+                  style={[
+                    styles.languageBtnText,
+                    { color: colors.textSecondary },
+                    locale === "my" && [styles.languageBtnTextActive, { color: Brand.primary }],
+                  ]}
+                >
+                  {t("profile.myanmar")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.text }]}>
-              Create Account
+              {t("auth.signUp.title")}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Sign up to get started with Family Taxi
+              {t("auth.signUp.subtitle")}
             </Text>
           </View>
 
           {/* Form */}
           <View style={styles.form}>
             <Input
-              label="Full Name"
-              placeholder="Enter your full name"
+              label={t("auth.signUp.fullName")}
+              placeholder={t("auth.signUp.fullNamePlaceholder")}
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -191,8 +239,8 @@ export default function SignUpScreen() {
             />
 
             <Input
-              label="Email"
-              placeholder="Enter your email"
+              label={t("auth.signUp.email")}
+              placeholder={t("auth.signUp.emailPlaceholder")}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -203,8 +251,8 @@ export default function SignUpScreen() {
             />
 
             <Input
-              label="Password"
-              placeholder="Create a password"
+              label={t("auth.signUp.password")}
+              placeholder={t("auth.signUp.passwordPlaceholder")}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -215,8 +263,8 @@ export default function SignUpScreen() {
             />
 
             <Input
-              label="Confirm Password"
-              placeholder="Confirm your password"
+              label={t("auth.signUp.confirmPassword")}
+              placeholder={t("auth.signUp.confirmPasswordPlaceholder")}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
@@ -230,7 +278,7 @@ export default function SignUpScreen() {
               <Text
                 style={[styles.requirementsTitle, { color: colors.textMuted }]}
               >
-                Password must contain:
+                {t("auth.signUp.passwordRequirements")}
               </Text>
               <View style={styles.requirementRow}>
                 <Ionicons
@@ -253,7 +301,7 @@ export default function SignUpScreen() {
                     },
                   ]}
                 >
-                  At least 8 characters
+                  {t("auth.signUp.characters8")}
                 </Text>
               </View>
               <View style={styles.requirementRow}>
@@ -280,7 +328,7 @@ export default function SignUpScreen() {
                     },
                   ]}
                 >
-                  Uppercase, lowercase and special characters
+                  {t("auth.signUp.uppercaseLowercaseSpecial")}
                 </Text>
               </View>
               <View style={styles.requirementRow}>
@@ -301,13 +349,13 @@ export default function SignUpScreen() {
                     },
                   ]}
                 >
-                  At least one number
+                  {t("auth.signUp.number")}
                 </Text>
               </View>
             </View>
 
             <Button
-              title="Create Account"
+              title={t("auth.signUp.submit")}
               onPress={handleSignUp}
               loading={loading}
               size="lg"
@@ -320,7 +368,7 @@ export default function SignUpScreen() {
                 style={[styles.dividerLine, { backgroundColor: colors.border }]}
               />
               <Text style={[styles.dividerText, { color: colors.textMuted }]}>
-                or continue with
+                {t("auth.signIn.orContinueWith")}
               </Text>
               <View
                 style={[styles.dividerLine, { backgroundColor: colors.border }]}
@@ -329,7 +377,7 @@ export default function SignUpScreen() {
 
             {/* Social Login */}
             <Button
-              title="Continue with Google"
+              title={t("auth.signUp.continueWithGoogle")}
               onPress={handleGoogleSignUp}
               variant="social"
               loading={googleLoading}
@@ -341,20 +389,25 @@ export default function SignUpScreen() {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-              Already have an account?{" "}
+              {t("auth.signUp.hasAccount")}{" "}
             </Text>
             <TouchableOpacity onPress={() => router.push("/(auth)/sign-in")}>
               <Text style={[styles.linkText, { color: Brand.primary }]}>
-                Sign In
+                {t("auth.signUp.signIn")}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Terms */}
           <Text style={[styles.terms, { color: colors.textMuted }]}>
-            By creating an account, you agree to our{" "}
-            <Text style={{ color: Brand.primary }}>Terms of Service</Text> and{" "}
-            <Text style={{ color: Brand.primary }}>Privacy Policy</Text>
+            {t("auth.signUp.termsPrefix")}
+            <Text style={{ color: Brand.primary }}>
+              {t("auth.signUp.termsOfService")}
+            </Text>
+            {t("auth.signUp.termsAnd")}
+            <Text style={{ color: Brand.primary }}>
+              {t("auth.signUp.privacyPolicy")}
+            </Text>
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -374,13 +427,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.lg,
   },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: BorderRadius.full,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: Spacing.md,
+  },
+  languageRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  languageBtn: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  languageBtnText: {
+    fontSize: FontSize.sm,
+  },
+  languageBtnTextActive: {
+    fontWeight: "600",
   },
   header: {
     marginBottom: Spacing.xl,

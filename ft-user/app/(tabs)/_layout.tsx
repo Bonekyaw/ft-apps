@@ -10,8 +10,11 @@ import { Platform } from "react-native";
 
 import { AndroidGlassTabs } from "@/components/GlassTabBar";
 import { Brand, Colors } from "@/constants/theme";
+import { useTranslation } from "@/lib/i18n";
 
 export default function TabLayout() {
+  const { t } = useTranslation();
+
   if (Platform.OS === "android") {
     return (
       <ThemeProvider value={DefaultTheme}>
@@ -44,7 +47,7 @@ export default function TabLayout() {
               <VectorIcon family={MaterialIcons} name="home" />
             }
           />
-          <Label>Home</Label>
+          <Label>{t("tabs.home")}</Label>
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="explore">
@@ -54,7 +57,7 @@ export default function TabLayout() {
               <VectorIcon family={MaterialIcons} name="schedule" />
             }
           />
-          <Label>Activity</Label>
+          <Label>{t("tabs.activity")}</Label>
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="profile">
@@ -64,7 +67,7 @@ export default function TabLayout() {
               <VectorIcon family={MaterialIcons} name="person" />
             }
           />
-          <Label>Profile</Label>
+          <Label>{t("tabs.profile")}</Label>
         </NativeTabs.Trigger>
       </NativeTabs>
     </ThemeProvider>

@@ -15,6 +15,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Brand } from "@/constants/theme";
+import { useTranslation } from "@/lib/i18n";
 
 // iOS liquid glass constants
 const BAR_HEIGHT = 56;
@@ -27,21 +28,21 @@ const TABS_CONFIG = [
   {
     name: "(home)" as const,
     href: "/(tabs)/(home)" as const,
-    label: "Home",
+    labelKey: "tabs.home" as const,
     icon: "home" as const,
     iconFilled: "home" as const,
   },
   {
     name: "explore" as const,
     href: "/(tabs)/explore" as const,
-    label: "Activity",
+    labelKey: "tabs.activity" as const,
     icon: "schedule" as const,
     iconFilled: "schedule" as const,
   },
   {
     name: "profile" as const,
     href: "/(tabs)/profile" as const,
-    label: "Profile",
+    labelKey: "tabs.profile" as const,
     icon: "person" as const,
     iconFilled: "person" as const,
   },
@@ -51,15 +52,18 @@ const TABS_CONFIG = [
 
 function GlassTabButton({
   name,
-  label,
+  labelKey,
+  t,
   icon,
   iconFilled,
 }: {
   name: string;
-  label: string;
+  labelKey: string;
+  t: (key: string) => string;
   icon: React.ComponentProps<typeof MaterialIcons>["name"];
   iconFilled: React.ComponentProps<typeof MaterialIcons>["name"];
 }) {
+  const label = t(labelKey);
   const { trigger } = useTabTrigger({ name });
   const isFocused = Boolean(trigger?.isFocused);
 
@@ -104,6 +108,7 @@ function GlassTabButton({
 export function AndroidGlassTabs() {
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, 12);
+  const { t } = useTranslation();
 
   return (
     <Tabs>
@@ -140,7 +145,8 @@ export function AndroidGlassTabs() {
               <TabTrigger key={tab.name} name={tab.name} style={styles.trigger}>
                 <GlassTabButton
                   name={tab.name}
-                  label={tab.label}
+                  labelKey={tab.labelKey}
+                  t={t}
                   icon={tab.icon}
                   iconFilled={tab.iconFilled}
                 />
