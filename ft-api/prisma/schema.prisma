@@ -1,0 +1,562 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  USER
+  DRIVER
+  ADMIN
+}
+
+enum DriverStatus {
+  OFFLINE
+  ONLINE
+  ON_TRIP
+}
+
+enum DriverApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum VehicleType {
+  ECONOMY
+  COMFORT
+  PREMIUM
+  XL
+  MOTORBIKE
+}
+
+enum RideStatus {
+  PENDING // User requested, waiting for driver
+  ACCEPTED // Driver accepted the ride
+  DRIVER_ARRIVING // Driver is on the way to pickup
+  ARRIVED // Driver arrived at pickup location
+  IN_PROGRESS // Ride is ongoing
+  COMPLETED // Ride finished successfully
+  CANCELLED // Ride was cancelled
+}
+
+enum CancellationReason {
+  USER_CANCELLED
+  DRIVER_CANCELLED
+  NO_DRIVERS_AVAILABLE
+  DRIVER_NOT_FOUND
+  PAYMENT_FAILED
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// ============================================
+// AUTH MODELS (better-auth)
+// ============================================
+
+model User {
+  id            String   @id
+  name          String
+  email         String
+  emailVerified Boolean  @default(false)
+  role          UserRole @default(USER)
+  phone         String?
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Auth relations
+  sessions Session[]
+  accounts Account[]
+
+  // Taxi platform relations
+  driver           Driver?
+  ridesAsPassenger Ride[]              @relation("PassengerRides")
+  ratingsGiven     Rating[]            @relation("RatingsGiven")
+  ratingsReceived  Rating[]            @relation("RatingsReceived")
+  notifications    Notification[]
+  savedLocations   SavedLocation[]
+  paymentMethods   UserPaymentMethod[]
+
+  @@unique([email])
+  @@unique([phone])
+  @@index([role])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ============================================
+// DRIVER & VEHICLE MODELS
+// ============================================
+
+model Driver {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Driver status
+  status         DriverStatus         @default(OFFLINE)
+  approvalStatus DriverApprovalStatus @default(PENDING)
+
+  // License & documents
+  licenseNumber      String?
+  licenseExpiry      DateTime?
+  nationalId         String?
+  licenseImageUrl    String?
+  nationalIdImageUrl String?
+
+  // Stats
+  totalRides    Int     @default(0)
+  totalEarnings Decimal @default(0) @db.Decimal(10, 2)
+  averageRating Decimal @default(0) @db.Decimal(2, 1)
+  ratingCount   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  vehicle         Vehicle?
+  currentLocation DriverLocation?
+  rides           Ride[]          @relation("DriverRides")
+  earnings        DriverEarning[]
+
+  @@index([status])
+  @@index([approvalStatus])
+  @@index([status, approvalStatus])
+  @@map("driver")
+}
+
+model Vehicle {
+  id       String @id @default(cuid())
+  driverId String @unique
+  driver   Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  // Vehicle details
+  type        VehicleType @default(ECONOMY)
+  make        String // e.g., Toyota
+  model       String // e.g., Camry
+  year        Int
+  color       String
+  plateNumber String      @unique
+  capacity    Int         @default(4)
+
+  // Documents
+  registrationNumber String?
+  registrationExpiry DateTime?
+  insuranceNumber    String?
+  insuranceExpiry    DateTime?
+  vehicleImageUrl    String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+  @@map("vehicle")
+}
+
+model DriverLocation {
+  id       String @id @default(cuid())
+  driverId String @unique
+  driver   Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  latitude  Decimal  @db.Decimal(10, 8)
+  longitude Decimal  @db.Decimal(11, 8)
+  heading   Decimal? @db.Decimal(5, 2) // Direction in degrees (0-360)
+  speed     Decimal? @db.Decimal(5, 2) // Speed in km/h
+  accuracy  Decimal? @db.Decimal(6, 2) // GPS accuracy in meters
+
+  updatedAt DateTime @updatedAt
+
+  @@index([latitude, longitude])
+  @@map("driver_location")
+}
+
+// ============================================
+// RIDE & BOOKING MODELS
+// ============================================
+
+model Ride {
+  id String @id @default(cuid())
+
+  // Participants
+  passengerId String
+  passenger   User    @relation("PassengerRides", fields: [passengerId], references: [id])
+  driverId    String?
+  driver      Driver? @relation("DriverRides", fields: [driverId], references: [id])
+
+  // Status
+  status      RideStatus  @default(PENDING)
+  vehicleType VehicleType @default(ECONOMY)
+
+  // Pickup location
+  pickupAddress String
+  pickupLat     Decimal @db.Decimal(10, 8)
+  pickupLng     Decimal @db.Decimal(11, 8)
+
+  // Dropoff location
+  dropoffAddress String
+  dropoffLat     Decimal @db.Decimal(10, 8)
+  dropoffLng     Decimal @db.Decimal(11, 8)
+
+  // Route info (from Mapbox)
+  distanceMeters  Int? // Total distance in meters
+  durationSeconds Int? // Estimated duration in seconds
+  polyline        String? // Encoded polyline for route display
+
+  // Pricing
+  baseFare        Decimal @db.Decimal(10, 2)
+  distanceFare    Decimal @default(0) @db.Decimal(10, 2)
+  timeFare        Decimal @default(0) @db.Decimal(10, 2)
+  surgeFare       Decimal @default(0) @db.Decimal(10, 2)
+  surgeMultiplier Decimal @default(1) @db.Decimal(3, 2)
+  discount        Decimal @default(0) @db.Decimal(10, 2)
+  totalFare       Decimal @db.Decimal(10, 2)
+  currency        String  @default("USD")
+
+  // Timestamps
+  requestedAt DateTime  @default(now())
+  acceptedAt  DateTime?
+  arrivedAt   DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  // Cancellation
+  cancellationReason CancellationReason?
+  cancelledBy        String? // userId of who cancelled
+
+  // Notes
+  passengerNote String?
+  driverNote    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  payment Payment?
+  rating  Rating?
+
+  @@index([passengerId])
+  @@index([driverId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@map("ride")
+}
+
+// ============================================
+// PAYMENT MODELS
+// ============================================
+
+model Payment {
+  id     String @id @default(cuid())
+  rideId String @unique
+  ride   Ride   @relation(fields: [rideId], references: [id])
+
+  amount   Decimal       @db.Decimal(10, 2)
+  currency String        @default("USD")
+  method   PaymentMethod @default(CASH)
+  status   PaymentStatus @default(PENDING)
+
+  // Payment provider info
+  transactionId   String? // External payment provider transaction ID
+  paymentIntentId String? // Stripe payment intent or similar
+
+  // Breakdown
+  driverPayout Decimal @db.Decimal(10, 2) // Amount driver receives
+  platformFee  Decimal @db.Decimal(10, 2) // Platform commission
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status])
+  @@index([method])
+  @@map("payment")
+}
+
+model UserPaymentMethod {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        String // "card", "wallet", etc.
+  provider    String? // "stripe", "paypal", etc.
+  last4       String? // Last 4 digits of card
+  brand       String? // "visa", "mastercard", etc.
+  expiryMonth Int?
+  expiryYear  Int?
+  isDefault   Boolean @default(false)
+
+  // External reference
+  externalId String? // Stripe customer payment method ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isDefault])
+  @@map("user_payment_method")
+}
+
+model DriverEarning {
+  id       String @id @default(cuid())
+  driverId String
+  driver   Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  amount      Decimal @db.Decimal(10, 2)
+  currency    String  @default("USD")
+  type        String // "ride", "bonus", "tip", etc.
+  description String?
+  rideId      String? // Reference to ride if applicable
+
+  createdAt DateTime @default(now())
+
+  @@index([driverId])
+  @@index([driverId, createdAt])
+  @@map("driver_earning")
+}
+
+// ============================================
+// RATING & REVIEW MODELS
+// ============================================
+
+model Rating {
+  id     String @id @default(cuid())
+  rideId String @unique
+  ride   Ride   @relation(fields: [rideId], references: [id])
+
+  // Who rated whom
+  raterId String
+  rater   User   @relation("RatingsGiven", fields: [raterId], references: [id])
+  rateeId String
+  ratee   User   @relation("RatingsReceived", fields: [rateeId], references: [id])
+
+  rating  Int // 1-5 stars
+  comment String?
+  tags    String[] // ["clean_car", "friendly", "fast", etc.]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([raterId])
+  @@index([rateeId])
+  @@index([rating])
+  @@map("rating")
+}
+
+// ============================================
+// NOTIFICATION MODEL
+// ============================================
+
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title  String
+  body   String
+  type   String // "ride_update", "promo", "system", etc.
+  data   Json? // Additional payload data
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notification")
+}
+
+// ============================================
+// SAVED LOCATIONS
+// ============================================
+
+model SavedLocation {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String // "Home", "Work", "Gym", etc.
+  address   String
+  latitude  Decimal @db.Decimal(10, 8)
+  longitude Decimal @db.Decimal(11, 8)
+  icon      String? // Icon name for display
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("saved_location")
+}
+
+// ============================================
+// PRICING CONFIGURATION
+// ============================================
+
+model PricingConfig {
+  id          String      @id @default(cuid())
+  vehicleType VehicleType @unique
+
+  baseFare      Decimal @db.Decimal(10, 2) // Base fare for pickup
+  perKmRate     Decimal @db.Decimal(10, 2) // Rate per kilometer
+  perMinuteRate Decimal @db.Decimal(10, 2) // Rate per minute
+  minimumFare   Decimal @db.Decimal(10, 2) // Minimum fare regardless of distance
+  bookingFee    Decimal @default(0) @db.Decimal(10, 2) // Fixed booking fee
+
+  currency String  @default("USD")
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("pricing_config")
+}
+
+model SurgeZone {
+  id   String @id @default(cuid())
+  name String
+
+  // Zone boundary (could be polygon, but using center + radius for simplicity)
+  centerLat    Decimal @db.Decimal(10, 8)
+  centerLng    Decimal @db.Decimal(11, 8)
+  radiusMeters Int
+
+  multiplier Decimal @db.Decimal(3, 2) // e.g., 1.5x, 2.0x
+  isActive   Boolean @default(true)
+
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([centerLat, centerLng])
+  @@map("surge_zone")
+}
+
+// ============================================
+// PROMO CODES
+// ============================================
+
+model PromoCode {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  description String?
+
+  discountType  String // "percentage" or "fixed"
+  discountValue Decimal  @db.Decimal(10, 2)
+  maxDiscount   Decimal? @db.Decimal(10, 2) // Cap for percentage discounts
+  minimumFare   Decimal? @db.Decimal(10, 2) // Minimum fare to apply
+
+  usageLimit   Int? // Total times code can be used
+  usageCount   Int  @default(0)
+  perUserLimit Int  @default(1) // Times each user can use
+
+  validFrom  DateTime  @default(now())
+  validUntil DateTime?
+  isActive   Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usages PromoCodeUsage[]
+
+  @@index([code])
+  @@index([isActive])
+  @@map("promo_code")
+}
+
+model PromoCodeUsage {
+  id          String    @id @default(cuid())
+  promoCodeId String
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id])
+  userId      String
+  rideId      String?
+
+  discountApplied Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([promoCodeId])
+  @@index([userId])
+  @@index([promoCodeId, userId])
+  @@map("promo_code_usage")
+}

@@ -1,0 +1,59 @@
+# .cursorrules - Specialized for AI-Powered Taxi Platform (Uber/Grab Clone)
+
+project_name: "Taxi Booking Platform"
+tech_stack:
+  backend: "NestJS + Prisma ORM + PostgreSQL (PostGIS enabled)"
+  mobile: "React Native Expo 54 (User & Driver apps)"
+  admin: "React Admin Dashboard"
+  auth: "better-auth (Google Social + Email/Password)"
+  maps: "react-native-maps (Google Maps Provider)"
+  realtime: "Ably (Pub/Sub for location & status updates)"
+  infrastructure: "Neon DB + Resend (OTP)"
+
+# --- ARCHITECTURAL PATTERNS ---
+architecture:
+  - Use "Feature-First" directory structure (e.g., src/modules/rides, src/modules/auth).
+  - Backend: Follow NestJS modular patterns; use Services for heavy business logic (pricing, matching).
+  - Mobile: Use "Container/Presentational" pattern for complex Map screens to separate UI from Map logic.
+
+# --- GOOGLE MAPS & GEOSPATIAL RULES ---
+maps_and_navigation:
+  - Provider: Always use `PROVIDER_GOOGLE` for consistency across iOS and Android.
+  - Driver Movement: Use `AnimatedRegion` and `MarkerAnimated` for smooth car movement.
+  - Heading: Calculate bearing/heading locally if GPS data lacks it to rotate car markers.
+  - Backend: All distance/fare calculations MUST use PostGIS `geography` type (not geometry) for meter-accuracy.
+  - API Keys:
+      - Mobile: Use restricted Android/iOS keys in `app.json`.
+      - Logic: Never call Routes/Places API directly from Mobile. Use NestJS as a proxy to protect Server Keys.
+  - Routes API v2: Always include `X-Goog-FieldMask` in headers to specify required fields (duration, distanceMeters, polyline).
+
+# --- REAL-TIME & STATE MANAGEMENT ---
+real_time_logic:
+  - Ably: Use Ably for real-time car tracking and ride status (REquested -> Accepted -> Arrived -> Started -> Completed).
+  - Throttling: Stream driver location to Ably every 1-2s, but save to PostgreSQL via Prisma only every 10s or 20m of movement.
+  - Client State: Use Zustand with `immer` for ride state. Avoid storing large Map objects in global state.
+  - Server State: Use Tanstack Query for non-realtime data (History, Profiles, Settings).
+
+# --- SECURITY & AUTHENTICATION ---
+security_rules:
+  - better-auth: Centralize auth logic; ensure Role-Based Access Control (RBAC) separates 'RIDER' and 'DRIVER' scopes.
+  - API Security: All ride-related endpoints must verify if the `userId` matches the `riderId` or `driverId` of the active ride.
+  - Environment Variables: Strictly use `.env` for secrets; ensure `EXPO_PUBLIC_` prefix is only used for non-sensitive public keys.
+
+# --- CODING STYLE & QUALITY ---
+code_style:
+  - Use TypeScript "Strict" mode. No `any` types.
+  - Logic Separation: Move complex math (Haversine, Fare Formulas) into dedicated `utils/math.ts` helpers.
+  - Error Handling: Use NestJS Global Exception Filters. In Mobile, use Error Boundaries for Map components.
+  - Clean Code: Prefer async/await. Functions should follow the "Single Responsibility Principle" (max 30 lines preferred).
+
+# --- DATABASE (POSTGIS + PRISMA) ---
+database:
+  - Prisma: Use `$queryRaw` for complex PostGIS queries (ST_DWithin, ST_Distance, ST_ClosestPoint).
+  - Indexing: Ensure GIST indexes are applied to all `location` geography columns.
+  - Soft Deletes: Use `deletedAt` timestamps for Rides and Profiles.
+
+# --- TESTING ---
+testing_priorities:
+  - Test the "Pricing Engine" with unit tests for various distances/times.
+  - Test the "Off-Route Detection" logic with mock GPS points.
