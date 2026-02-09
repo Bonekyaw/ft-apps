@@ -52,6 +52,10 @@ export const MapContainer: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [region, setRegion] = useState<Region>(DEFAULT_LOCATION);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
+  const isFollowingUserRef = React.useRef(isFollowingUser);
+  React.useEffect(() => {
+    isFollowingUserRef.current = isFollowingUser;
+  }, [isFollowingUser]);
 
   const currentLocation = location
     ? { latitude: location.coords.latitude, longitude: location.coords.longitude }
@@ -109,10 +113,9 @@ export const MapContainer: React.FC = () => {
         },
         (newLocation) => {
           setLocation(newLocation);
-          // Only update the region state if we are tracking the user
-          // This avoids the loop where `onRegionChangeComplete` fights with `userLocation`
-          if (isFollowingUser) {
-             setRegion({
+          // Only update the region (and thus map center) when user has not panned away
+          if (isFollowingUserRef.current) {
+            setRegion({
               latitude: newLocation.coords.latitude,
               longitude: newLocation.coords.longitude,
               latitudeDelta: 0.005,
@@ -126,16 +129,7 @@ export const MapContainer: React.FC = () => {
         subscription.remove();
       };
     })();
-  }, [isFollowingUser]); // Added dependency to re-evaluate tracking logic if needed, simplify if causing issues
-
-  const handleRegionChangeComplete = (reg: Region) => {
-    // If the user drags significantly, disable following mode
-    // Ideally, check distance between reg.center and userLocation
-    // For now, just simplistic:
-    // setRegion(reg); // Don't strictly control it if we want smooth panning
-    // But we need to update state if we want to know where we are looking
-  };
-
+  }, []); // Run once on mount; ref keeps following state in sync
 
   return (
     <View style={styles.container}>
@@ -144,10 +138,10 @@ export const MapContainer: React.FC = () => {
         region={region}
         userLocation={currentLocation}
         markers={markers}
+        isFollowingUser={isFollowingUser}
         onRegionChangeComplete={(reg) => {
-             // If user pans, we might stop following
-             // setIsFollowingUser(false); 
-             // For now, doing nothing breaks the loop effectively
+          // User panned the map — stop auto-centering on location
+          setIsFollowingUser(false);
         }}
       />
       

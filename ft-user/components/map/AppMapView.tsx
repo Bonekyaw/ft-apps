@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Image } from 'expo-image';
-import MapView, { PROVIDER_GOOGLE, Region, Marker, Polyline } from 'react-native-maps';
+import { CarMarker } from './CarMarker';
+import MapView, { PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { useTheme } from '@react-navigation/native';
 
 // Define the ref handle type
@@ -18,6 +18,8 @@ interface MapViewProps {
     latitude: number;
     longitude: number;
   };
+  /** When true, map camera follows user location; when false, pan/zoom are left as-is */
+  isFollowingUser?: boolean;
   onRegionChangeComplete?: (region: Region) => void;
   markers?: {
     id: string;
@@ -30,6 +32,7 @@ interface MapViewProps {
 export const AppMapView = React.forwardRef<AppMapViewHandle, MapViewProps>(({
   region,
   userLocation,
+  isFollowingUser = true,
   onRegionChangeComplete,
   markers = [],
 }, ref) => {
@@ -69,18 +72,17 @@ export const AppMapView = React.forwardRef<AppMapViewHandle, MapViewProps>(({
 
   const [isUserInteracting, setIsUserInteracting] = React.useState(false);
 
+  // Only recenter the map on region when we are in "follow user" mode (e.g. after center button or initial load).
+  // When the user has panned away, isFollowingUser is false and we do not animate back to their location.
   React.useEffect(() => {
-    if (mapRef.current && region && !isUserInteracting) {
-      // Only update the center, preserving the user's zoom/pitch
-      // WE MUST NOT pass zoom/pitch/heading here if we want to respect user interaction
-      mapRef.current.animateCamera({
-        center: {
-          latitude: region.latitude,
-          longitude: region.longitude,
-        },
-      }, { duration: 500 });
-    }
-  }, [region.latitude, region.longitude, isUserInteracting]);
+    if (!isFollowingUser || !mapRef.current || !region || isUserInteracting) return;
+    mapRef.current.animateCamera({
+      center: {
+        latitude: region.latitude,
+        longitude: region.longitude,
+      },
+    }, { duration: 500 });
+  }, [region.latitude, region.longitude, isUserInteracting, isFollowingUser]);
 
   return (
     <MapView
@@ -112,24 +114,13 @@ export const AppMapView = React.forwardRef<AppMapViewHandle, MapViewProps>(({
       }}
     >
       {markers.map((marker) => (
-        <Marker
+        <CarMarker
           key={marker.id}
+          id={marker.id}
           coordinate={marker.coordinate}
           title={marker.title}
           description={marker.description}
-          anchor={{ x: 0.5, y: 0.5 }}
-          flat={true}
-          tracksViewChanges={false}
-        >
-          <View style={styles.markerContainer}>
-            <Image
-              source={require('@/assets/images/car-icon.png')}
-              style={styles.carIcon}
-              contentFit="contain"
-              cachePolicy="memory-disk"
-            />
-          </View>
-        </Marker>
+        />
       ))}
     </MapView>
   );
@@ -138,16 +129,6 @@ export const AppMapView = React.forwardRef<AppMapViewHandle, MapViewProps>(({
 const styles = StyleSheet.create({
   map: {
     flex: 1,
-  },
-  markerContainer: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  carIcon: {
-    width: 48,
-    height: 48,
   },
 });
 
