@@ -10,6 +10,7 @@ import { AuthModule } from '@thallesp/nestjs-better-auth';
 import { auth } from './lib/auth.js';
 import { PrismaService } from './prisma.service.js';
 import { MapsModule } from './maps/maps.module.js';
+import { PricingModule } from './pricing/pricing.module.js';
 import { UsersModule } from './users/users.module.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
     AuthModule.forRoot({ auth }),
     UsersModule,
     MapsModule,
+    PricingModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

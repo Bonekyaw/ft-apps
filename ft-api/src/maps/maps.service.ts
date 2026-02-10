@@ -5,6 +5,13 @@ import axios, { AxiosError } from 'axios';
 const PLACES_AUTOCOMPLETE_URL =
   'https://places.googleapis.com/v1/places:autocomplete';
 
+/** Routes API (Compute Routes – Basic SKU). Only request essentials to keep cost low. */
+const ROUTES_COMPUTE_URL =
+  'https://routes.googleapis.com/directions/v2:computeRoutes';
+
+const ROUTES_FIELD_MASK =
+  'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline';
+
 export interface AutocompleteRequestBody {
   search: string;
   sessionToken?: string;
@@ -52,13 +59,72 @@ export class MapsService {
   private getApiKey(): string {
     const key =
       this.config.get<string>('GOOGLE_PLACES_API_KEY') ??
-      this.config.get<string>('GOOGLE_MAPS_API_KEY');
+      this.config.get<string>('GOOGLE_MAPS_API_KEY') ??
+      this.config.get<string>('GOOGLE_ROUTES_API_KEY');
     if (!key) {
       throw new Error(
-        'GOOGLE_PLACES_API_KEY or GOOGLE_MAPS_API_KEY must be set in .env',
+        'GOOGLE_PLACES_API_KEY, GOOGLE_MAPS_API_KEY, or GOOGLE_ROUTES_API_KEY must be set in .env',
       );
     }
     return key;
+  }
+
+  /**
+   * Compute route between two points using Google Routes API (Basic SKU).
+   * Only requests duration, distanceMeters, and polyline.encodedPolyline.
+   */
+  async computeRoute(origin: { lat: number; lng: number }, destination: { lat: number; lng: number }): Promise<{
+    distanceMeters: number;
+    durationSeconds: number;
+    encodedPolyline: string;
+  }> {
+    const apiKey = this.getApiKey();
+
+    const body = {
+      origin: {
+        location: { latLng: { latitude: origin.lat, longitude: origin.lng } },
+      },
+      destination: {
+        location: {
+          latLng: { latitude: destination.lat, longitude: destination.lng },
+        },
+      },
+      travelMode: 'DRIVE',
+      computeAlternativeRoutes: false,
+      languageCode: 'en-US',
+      units: 'METRIC',
+    };
+
+    const { data } = await axios.post<{
+      routes?: Array<{
+        distanceMeters?: number;
+        duration?: string;
+        polyline?: { encodedPolyline?: string };
+      }>;
+    }>(ROUTES_COMPUTE_URL, body, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': ROUTES_FIELD_MASK,
+      },
+      timeout: 15_000,
+    });
+
+    const route = data.routes?.[0];
+    if (!route) {
+      throw new Error('No route returned from Routes API');
+    }
+
+    const distanceMeters = route.distanceMeters ?? 0;
+    const encodedPolyline = route.polyline?.encodedPolyline ?? '';
+
+    let durationSeconds = 0;
+    if (typeof route.duration === 'string') {
+      const match = route.duration.match(/^(\d+)s$/);
+      durationSeconds = match ? parseInt(match[1], 10) : 0;
+    }
+
+    return { distanceMeters, durationSeconds, encodedPolyline };
   }
 
   /** Small radius for very nearby results (5 km). */
