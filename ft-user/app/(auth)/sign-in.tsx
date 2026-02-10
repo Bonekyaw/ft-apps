@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button, Input } from "@/components/ui";
 import {
@@ -23,6 +25,10 @@ import {
 } from "@/constants/theme";
 import { useTranslation } from "@/lib/i18n";
 import type { LocaleCode } from "@/lib/i18n";
+import {
+  createSignInSchema,
+  type SignInFormValues,
+} from "@/lib/validations";
 import { authClient } from "@/lib/auth-client";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
@@ -30,42 +36,21 @@ export default function SignInScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const { t, locale, setLocale } = useTranslation();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-    {},
-  );
 
-  const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
+  const signInSchema = useMemo(() => createSignInSchema(t), [t]);
+  const { control, handleSubmit } = useForm<SignInFormValues>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: { email: "", password: "" },
+  });
 
-    if (!email) {
-      newErrors.email = t("auth.errors.emailRequired");
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = t("auth.errors.emailInvalid");
-    }
-
-    if (!password) {
-      newErrors.password = t("auth.errors.passwordRequired");
-    } else if (password.length < 8) {
-      newErrors.password = t("auth.errors.passwordMinLength");
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSignIn = async () => {
-    if (!validateForm()) return;
-
+  const onSignIn = async (data: SignInFormValues) => {
     setLoading(true);
     try {
       const result = await authClient.signIn.email({
-        email,
-        password,
+        email: data.email,
+        password: data.password,
       });
 
       if (result.error) {
@@ -100,10 +85,7 @@ export default function SignInScreen() {
   };
 
   const handleForgotPassword = () => {
-    Alert.alert(
-      t("auth.errors.comingSoon"),
-      t("auth.errors.forgotPasswordSoon"),
-    );
+    router.push("/(auth)/forgot-password");
   };
 
   return (
@@ -118,6 +100,7 @@ export default function SignInScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          bounces={false}
         >
           {/* Language switcher */}
           <View style={styles.languageRow}>
@@ -171,7 +154,7 @@ export default function SignInScreen() {
                 { backgroundColor: `${Brand.primary}15` },
               ]}
             >
-              <Ionicons name="car-sport" size={48} color={Brand.primary} />
+              <Ionicons name="car-sport" size={36} color={Brand.primary} />
             </View>
             <Text style={[styles.title, { color: colors.text }]}>
               {t("auth.signIn.title")}
@@ -183,47 +166,15 @@ export default function SignInScreen() {
 
           {/* Form */}
           <View style={styles.form}>
-            <Input
-              label={t("auth.signIn.email")}
-              placeholder={t("auth.signIn.emailPlaceholder")}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              leftIcon="mail-outline"
-              error={errors.email}
-            />
-
-            <Input
-              label={t("auth.signIn.password")}
-              placeholder={t("auth.signIn.passwordPlaceholder")}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="password"
-              leftIcon="lock-closed-outline"
-              error={errors.password}
-            />
-
-            <TouchableOpacity
-              onPress={handleForgotPassword}
-              style={styles.forgotPassword}
-            >
-              <Text
-                style={[styles.forgotPasswordText, { color: Brand.primary }]}
-              >
-                {t("auth.signIn.forgotPassword")}
-              </Text>
-            </TouchableOpacity>
-
+            {/* Social Login */}
             <Button
-              title={t("auth.signIn.submit")}
-              onPress={handleSignIn}
-              loading={loading}
+              title={t("auth.signIn.continueWithGoogle")}
+              onPress={handleGoogleSignIn}
+              variant="social"
+              loading={googleLoading}
               size="lg"
-              style={styles.signInButton}
+              icon={<Ionicons name="logo-google" size={20} color="#DB4437" />}
+              style={styles.googleButton}
             />
 
             {/* Divider */}
@@ -239,14 +190,69 @@ export default function SignInScreen() {
               />
             </View>
 
-            {/* Social Login */}
+            <Controller
+              control={control}
+              name="email"
+              render={({
+                field: { onChange, onBlur, value },
+                fieldState: { error },
+              }) => (
+                <Input
+                  label={t("auth.signIn.email")}
+                  placeholder={t("auth.signIn.emailPlaceholder")}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  leftIcon="mail-outline"
+                  error={error?.message}
+                  containerStyle={styles.inputCompact}
+                />
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="password"
+              render={({
+                field: { onChange, onBlur, value },
+                fieldState: { error },
+              }) => (
+                <Input
+                  label={t("auth.signIn.password")}
+                  placeholder={t("auth.signIn.passwordPlaceholder")}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="password"
+                  leftIcon="lock-closed-outline"
+                  error={error?.message}
+                  containerStyle={styles.inputCompact}
+                />
+              )}
+            />
+
+            <TouchableOpacity
+              onPress={handleForgotPassword}
+              style={styles.forgotPassword}
+            >
+              <Text
+                style={[styles.forgotPasswordText, { color: Brand.primary }]}
+              >
+                {t("auth.signIn.forgotPassword")}
+              </Text>
+            </TouchableOpacity>
+
             <Button
-              title={t("auth.signIn.continueWithGoogle")}
-              onPress={handleGoogleSignIn}
-              variant="social"
-              loading={googleLoading}
+              title={t("auth.signIn.submit")}
+              onPress={handleSubmit(onSignIn)}
+              loading={loading}
               size="lg"
-              icon={<Ionicons name="logo-google" size={20} color="#DB4437" />}
+              style={styles.signInButton}
             />
           </View>
 
@@ -277,17 +283,18 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xl,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   languageRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: Spacing.sm,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   languageBtn: {
     paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
     borderColor: "transparent",
@@ -300,64 +307,70 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.md,
   },
   logoContainer: {
-    width: 100,
-    height: 100,
+    width: 56,
+    height: 56,
     borderRadius: BorderRadius.full,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
   },
   title: {
-    fontSize: FontSize.xxxl,
+    fontSize: FontSize.xxl,
     fontWeight: "700",
     marginBottom: Spacing.xs,
   },
   subtitle: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
     textAlign: "center",
   },
   form: {
     flex: 1,
   },
+  inputCompact: {
+    marginBottom: Spacing.sm,
+  },
   forgotPassword: {
     alignSelf: "flex-end",
-    marginBottom: Spacing.lg,
-    marginTop: -Spacing.sm,
+    marginBottom: Spacing.sm,
+    marginTop: -Spacing.xs,
   },
   forgotPasswordText: {
     fontSize: FontSize.sm,
     fontWeight: "500",
   },
   signInButton: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  googleButton: {
+    marginBottom: Spacing.sm,
   },
   divider: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: Spacing.lg,
+    marginVertical: Spacing.sm,
   },
   dividerLine: {
     flex: 1,
     height: 1,
   },
   dividerText: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.sm,
     fontSize: FontSize.sm,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: Spacing.lg,
+    paddingTop: Spacing.sm,
   },
   footerText: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
   },
   linkText: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
     fontWeight: "600",
   },
 });

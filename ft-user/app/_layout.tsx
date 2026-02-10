@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
@@ -19,8 +20,20 @@ function RootStack() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const { t } = useTranslation();
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending, refetch } = useSession();
   const { onboardingComplete, isLoading: isOnboardingLoading } = useOnboarding();
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  // Revalidate session when app comes to foreground (e.g. after admin revokes sessions)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
+        void refetch?.();
+      }
+      appStateRef.current = nextState;
+    });
+    return () => sub.remove();
+  }, [refetch]);
 
   const isFullyAuthenticated =
     !!session && session.user?.emailVerified === true;

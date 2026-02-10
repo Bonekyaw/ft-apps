@@ -53,6 +53,25 @@
       "termsAnd": " and ",
       "privacyPolicy": "Privacy Policy"
     },
+    "forgotPassword": {
+      "title": "Forgot Password",
+      "subtitle": "Enter your email and we'll send you a link to reset your password.",
+      "submit": "Send Reset Link",
+      "backToSignIn": "Back to Sign In",
+      "checkEmail": "Check Your Email",
+      "checkEmailMessage": "If an account exists for that email, we've sent a link to reset your password. Open the link to set a new password."
+    },
+    "resetPassword": {
+      "title": "Set New Password",
+      "subtitle": "Enter the code we sent to your email and choose a new password.",
+      "enterCode": "Verification code",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Reset Password",
+      "success": "Password Reset",
+      "successMessage": "Your password has been updated. You can now sign in with your new password.",
+      "noEmail": "Please start from Forgot Password and enter your email first."
+    },
     "verifyOtp": {
       "title": "Verify Your Email",
       "subtitle": "We've sent a 6-digit code to",

@@ -1,5 +1,8 @@
 import { Platform } from "react-native";
 import axios, { type AxiosError, isAxiosError } from "axios";
+import * as SecureStore from "expo-secure-store";
+import { signOut } from "@/lib/auth-client";
+
 /**
  * Base URL for the backend API (same host as Better Auth).
  */
@@ -11,6 +14,31 @@ export function getApiBaseUrl(): string {
     return "http://localhost:3000";
   }
   return envUrl ?? "http://localhost:3000";
+}
+
+/** Storage key used by better-auth expo client for cookies (storagePrefix "ftuser"). */
+const AUTH_COOKIE_STORAGE_KEY = "ftuser_cookie";
+
+/**
+ * Reads the session token from the same storage the better-auth expo client uses.
+ * Used to send Authorization: Bearer on API requests. Returns null if not logged in or expired.
+ */
+export async function getSessionTokenForApi(): Promise<string | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(AUTH_COOKIE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed: Record<string, { value?: string; expires?: string | null }> =
+      JSON.parse(raw);
+    const now = new Date();
+    for (const [key, entry] of Object.entries(parsed)) {
+      if (!key.includes("session_token") || !entry?.value) continue;
+      if (entry.expires && new Date(entry.expires) < now) continue;
+      return entry.value;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export interface PlacesSuggestion {
@@ -27,12 +55,35 @@ interface AutocompleteResponse {
   suggestions: PlacesSuggestion[];
 }
 
-/** Axios instance for the backend API (no auth attached). */
+/**
+ * Axios instance for all non-auth backend API calls.
+ * - Request: attaches Authorization: Bearer <session_token> when the user is logged in.
+ * - Response: on 401 (e.g. session revoked by admin), calls signOut() so the user is logged out.
+ * Use this instance for every call to the API except /api/auth (which uses the auth client).
+ */
 export const api = axios.create({
   baseURL: getApiBaseUrl(),
   timeout: 15_000,
   headers: { "Content-Type": "application/json" },
 });
+
+api.interceptors.request.use(async (config) => {
+  const token = await getSessionTokenForApi();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      void signOut();
+    }
+    return Promise.reject(error);
+  },
+);
 
 /**
  * Fetch place autocomplete suggestions (POI search when location is provided).

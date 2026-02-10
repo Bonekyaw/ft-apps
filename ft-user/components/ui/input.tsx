@@ -34,6 +34,8 @@ export function Input({
   onRightIconPress,
   containerStyle,
   secureTextEntry,
+  onBlur,
+  onFocus,
   ...props
 }: InputProps) {
   const colorScheme = useColorScheme();
@@ -80,8 +82,14 @@ export function Input({
           ]}
           placeholderTextColor={colors.inputPlaceholder}
           secureTextEntry={isPassword && !showPassword}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={(e) => {
+            setIsFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsFocused(false);
+            onBlur?.(e);
+          }}
           {...props}
         />
         {isPassword && (

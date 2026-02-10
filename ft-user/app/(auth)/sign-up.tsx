@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button, Input } from "@/components/ui";
 import {
@@ -23,6 +25,7 @@ import {
 } from "@/constants/theme";
 import { useTranslation } from "@/lib/i18n";
 import type { LocaleCode } from "@/lib/i18n";
+import { createSignUpSchema, type SignUpFormValues } from "@/lib/validations";
 import { authClient, emailOtp } from "@/lib/auth-client";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
@@ -30,67 +33,29 @@ export default function SignUpScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const { t, locale, setLocale } = useTranslation();
-
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [errors, setErrors] = useState<{
-    name?: string;
-    email?: string;
-    password?: string;
-    confirmPassword?: string;
-  }>({});
 
-  const validateForm = () => {
-    const newErrors: {
-      name?: string;
-      email?: string;
-      password?: string;
-      confirmPassword?: string;
-    } = {};
+  const signUpSchema = useMemo(() => createSignUpSchema(t), [t]);
+  const { control, handleSubmit, watch } = useForm<SignUpFormValues>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
-    if (!name.trim()) {
-      newErrors.name = t("auth.errors.nameRequired");
-    } else if (name.trim().length < 2) {
-      newErrors.name = t("auth.errors.nameMinLength");
-    }
+  const password = watch("password");
 
-    if (!email) {
-      newErrors.email = t("auth.errors.emailRequired");
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = t("auth.errors.emailInvalid");
-    }
-
-    if (!password) {
-      newErrors.password = t("auth.errors.passwordRequired");
-    } else if (password.length < 8) {
-      newErrors.password = t("auth.errors.passwordMinLength");
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      newErrors.password = t("auth.errors.passwordStrength");
-    }
-
-    if (!confirmPassword) {
-      newErrors.confirmPassword = t("auth.errors.confirmPasswordRequired");
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = t("auth.errors.passwordsDoNotMatch");
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSignUp = async () => {
-    if (!validateForm()) return;
-
+  const onSignUp = async (data: SignUpFormValues) => {
     setLoading(true);
     try {
       const result = await authClient.signUp.email({
-        name: name.trim(),
-        email,
-        password,
+        name: data.name.trim(),
+        email: data.email,
+        password: data.password,
       });
 
       if (result.error) {
@@ -102,7 +67,7 @@ export default function SignUpScreen() {
       }
 
       const otpResult = await emailOtp.sendVerificationOtp({
-        email,
+        email: data.email,
         type: "email-verification",
       });
 
@@ -120,14 +85,15 @@ export default function SignUpScreen() {
         return;
       }
 
-      // Navigate to OTP verification screen using replace to avoid back navigation issues
       router.replace({
         pathname: "/(auth)/verify-otp",
-        params: { email },
+        params: { email: data.email },
       });
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : t("auth.errors.unexpectedError");
+        error instanceof Error
+          ? error.message
+          : t("auth.errors.unexpectedError");
       Alert.alert(t("auth.errors.error"), message);
     } finally {
       setLoading(false);
@@ -143,7 +109,9 @@ export default function SignUpScreen() {
       });
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : t("auth.errors.googleSignUpFailed");
+        error instanceof Error
+          ? error.message
+          : t("auth.errors.googleSignUpFailed");
       Alert.alert(t("auth.errors.error"), message);
     } finally {
       setGoogleLoading(false);
@@ -162,6 +130,7 @@ export default function SignUpScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          bounces={false}
         >
           {/* Top bar: back button + language switcher */}
           <View style={styles.topBar}>
@@ -186,7 +155,10 @@ export default function SignUpScreen() {
                   style={[
                     styles.languageBtnText,
                     { color: colors.textSecondary },
-                    locale === "en" && [styles.languageBtnTextActive, { color: Brand.primary }],
+                    locale === "en" && [
+                      styles.languageBtnTextActive,
+                      { color: Brand.primary },
+                    ],
                   ]}
                 >
                   {t("profile.english")}
@@ -206,7 +178,10 @@ export default function SignUpScreen() {
                   style={[
                     styles.languageBtnText,
                     { color: colors.textSecondary },
-                    locale === "my" && [styles.languageBtnTextActive, { color: Brand.primary }],
+                    locale === "my" && [
+                      styles.languageBtnTextActive,
+                      { color: Brand.primary },
+                    ],
                   ]}
                 >
                   {t("profile.myanmar")}
@@ -227,50 +202,118 @@ export default function SignUpScreen() {
 
           {/* Form */}
           <View style={styles.form}>
-            <Input
-              label={t("auth.signUp.fullName")}
-              placeholder={t("auth.signUp.fullNamePlaceholder")}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              autoComplete="name"
-              leftIcon="person-outline"
-              error={errors.name}
+            {/* Social Login */}
+            <Button
+              title={t("auth.signUp.continueWithGoogle")}
+              onPress={handleGoogleSignUp}
+              variant="social"
+              loading={googleLoading}
+              size="lg"
+              icon={<Ionicons name="logo-google" size={20} color="#DB4437" />}
+              style={styles.googleButton}
             />
 
-            <Input
-              label={t("auth.signUp.email")}
-              placeholder={t("auth.signUp.emailPlaceholder")}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              leftIcon="mail-outline"
-              error={errors.email}
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View
+                style={[styles.dividerLine, { backgroundColor: colors.border }]}
+              />
+              <Text style={[styles.dividerText, { color: colors.textMuted }]}>
+                {t("auth.signIn.orContinueWith")}
+              </Text>
+              <View
+                style={[styles.dividerLine, { backgroundColor: colors.border }]}
+              />
+            </View>
+
+            <Controller
+              control={control}
+              name="name"
+              render={({
+                field: { onChange, onBlur, value },
+                fieldState: { error },
+              }) => (
+                <Input
+                  label={t("auth.signUp.fullName")}
+                  placeholder={t("auth.signUp.fullNamePlaceholder")}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  leftIcon="person-outline"
+                  error={error?.message}
+                  containerStyle={styles.inputCompact}
+                />
+              )}
             />
 
-            <Input
-              label={t("auth.signUp.password")}
-              placeholder={t("auth.signUp.passwordPlaceholder")}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="password-new"
-              leftIcon="lock-closed-outline"
-              error={errors.password}
+            <Controller
+              control={control}
+              name="email"
+              render={({
+                field: { onChange, onBlur, value },
+                fieldState: { error },
+              }) => (
+                <Input
+                  label={t("auth.signUp.email")}
+                  placeholder={t("auth.signUp.emailPlaceholder")}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  leftIcon="mail-outline"
+                  error={error?.message}
+                  containerStyle={styles.inputCompact}
+                />
+              )}
             />
 
-            <Input
-              label={t("auth.signUp.confirmPassword")}
-              placeholder={t("auth.signUp.confirmPasswordPlaceholder")}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              leftIcon="lock-closed-outline"
-              error={errors.confirmPassword}
+            <Controller
+              control={control}
+              name="password"
+              render={({
+                field: { onChange, onBlur, value },
+                fieldState: { error },
+              }) => (
+                <Input
+                  label={t("auth.signUp.password")}
+                  placeholder={t("auth.signUp.passwordPlaceholder")}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="password-new"
+                  leftIcon="lock-closed-outline"
+                  error={error?.message}
+                  containerStyle={styles.inputCompact}
+                />
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="confirmPassword"
+              render={({
+                field: { onChange, onBlur, value },
+                fieldState: { error },
+              }) => (
+                <Input
+                  label={t("auth.signUp.confirmPassword")}
+                  placeholder={t("auth.signUp.confirmPasswordPlaceholder")}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  leftIcon="lock-closed-outline"
+                  error={error?.message}
+                  containerStyle={styles.inputCompact}
+                />
+              )}
             />
 
             {/* Password Requirements */}
@@ -356,33 +399,10 @@ export default function SignUpScreen() {
 
             <Button
               title={t("auth.signUp.submit")}
-              onPress={handleSignUp}
+              onPress={handleSubmit(onSignUp)}
               loading={loading}
               size="lg"
               style={styles.signUpButton}
-            />
-
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View
-                style={[styles.dividerLine, { backgroundColor: colors.border }]}
-              />
-              <Text style={[styles.dividerText, { color: colors.textMuted }]}>
-                {t("auth.signIn.orContinueWith")}
-              </Text>
-              <View
-                style={[styles.dividerLine, { backgroundColor: colors.border }]}
-              />
-            </View>
-
-            {/* Social Login */}
-            <Button
-              title={t("auth.signUp.continueWithGoogle")}
-              onPress={handleGoogleSignUp}
-              variant="social"
-              loading={googleLoading}
-              size="lg"
-              icon={<Ionicons name="logo-google" size={20} color="#DB4437" />}
             />
           </View>
 
@@ -399,7 +419,9 @@ export default function SignUpScreen() {
           </View>
 
           {/* Terms */}
-          <Text style={[styles.terms, { color: colors.textMuted }]}>
+          <Text
+            style={[styles.terms, { color: colors.textMuted, lineHeight: 25 }]}
+          >
             {t("auth.signUp.termsPrefix")}
             <Text style={{ color: Brand.primary }}>
               {t("auth.signUp.termsOfService")}
@@ -425,13 +447,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.lg,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   backButton: {
     width: 40,
@@ -446,7 +469,7 @@ const styles = StyleSheet.create({
   },
   languageBtn: {
     paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
     borderColor: "transparent",
@@ -458,22 +481,28 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   header: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.md,
   },
   title: {
-    fontSize: FontSize.xxxl,
+    fontSize: FontSize.xxl,
     fontWeight: "700",
     marginBottom: Spacing.xs,
   },
   subtitle: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
   },
   form: {
     flex: 1,
   },
+  inputCompact: {
+    marginBottom: Spacing.sm,
+  },
+  googleButton: {
+    marginBottom: Spacing.sm,
+  },
   requirements: {
-    marginBottom: Spacing.lg,
-    marginTop: -Spacing.sm,
+    marginBottom: Spacing.sm,
+    marginTop: -Spacing.xs,
   },
   requirementsTitle: {
     fontSize: FontSize.xs,
@@ -482,45 +511,45 @@ const styles = StyleSheet.create({
   requirementRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   requirementText: {
     fontSize: FontSize.xs,
     marginLeft: Spacing.xs,
   },
   signUpButton: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
   },
   divider: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: Spacing.md,
+    marginVertical: Spacing.sm,
   },
   dividerLine: {
     flex: 1,
     height: 1,
   },
   dividerText: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.sm,
     fontSize: FontSize.sm,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: Spacing.lg,
+    paddingTop: Spacing.sm,
   },
   footerText: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
   },
   linkText: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
     fontWeight: "600",
   },
   terms: {
     fontSize: FontSize.xs,
     textAlign: "center",
-    marginTop: Spacing.md,
-    lineHeight: 18,
+    marginTop: Spacing.sm,
+    lineHeight: 16,
   },
 });

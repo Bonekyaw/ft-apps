@@ -49,3 +49,5 @@ export const signIn = client.signIn;
 export const signUp = client.signUp;
 export const signOut = client.signOut;
 export const emailOtp = client.emailOtp;
+export const requestPasswordReset = client.requestPasswordReset;
+export const resetPassword = client.resetPassword;
