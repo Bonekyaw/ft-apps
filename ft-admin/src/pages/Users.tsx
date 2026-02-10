@@ -48,7 +48,7 @@ type User = {
 };
 
 function usePermissions(role: string | undefined) {
-  const r = role ?? "";
+  const r = (role ?? "") as "ADMIN" | "MANAGER" | "OPERATION" | "SUPERADMIN";
   return {
     canBan: authClient.admin.checkRolePermission({
       permissions: { user: ["ban"] },
@@ -82,7 +82,7 @@ export default function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await authClient.admin.listUsers({});
+      const res = await authClient.admin.listUsers({ query: {} });
       const data = res && typeof res === "object" && "data" in res ? (res as { data: { users?: User[] } }).data : (res as { users?: User[] });
       const all = data?.users ?? [];
       const appUsers = all.filter(

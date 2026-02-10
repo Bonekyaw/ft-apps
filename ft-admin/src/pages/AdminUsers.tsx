@@ -59,7 +59,7 @@ type User = {
 };
 
 function usePermissions(role: string | undefined) {
-  const r = role ?? "";
+  const r = (role ?? "") as (typeof ADMIN_ROLES)[number];
   return {
     canCreate: authClient.admin.checkRolePermission({
       permissions: { user: ["create"] },
@@ -110,7 +110,7 @@ export default function AdminUsersPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await authClient.admin.listUsers({});
+      const res = await authClient.admin.listUsers({ query: {} });
       const data = res && typeof res === "object" && "data" in res ? (res as { data: { users?: User[] } }).data : (res as { users?: User[] });
       const all = data?.users ?? [];
       const currentUserId = session?.user?.id;
@@ -136,7 +136,10 @@ export default function AdminUsersPage() {
 
   async function handleSetRole(userId: string, role: string) {
     try {
-      await authClient.admin.setRole({ userId, role });
+      await authClient.admin.setRole({
+        userId,
+        role: role as (typeof ADMIN_ROLES)[number],
+      });
       setSetRoleTarget(null);
       await loadUsers();
     } catch (e) {

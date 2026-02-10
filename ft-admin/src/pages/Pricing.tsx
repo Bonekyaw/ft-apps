@@ -451,6 +451,7 @@ export default function PricingPage() {
                 <input
                   type="checkbox"
                   id="active"
+                  aria-label="Active"
                   checked={ruleForm.active}
                   onChange={(e) =>
                     setRuleForm((s) => ({ ...s, active: e.target.checked }))
@@ -539,7 +540,10 @@ export default function PricingPage() {
                       onChange={(e) =>
                         setRuleForm((s) => ({
                           ...s,
-                          endHour: Number(e.target.value) ?? 23,
+                          endHour:
+                            e.target.value === ""
+                              ? 23
+                              : Number(e.target.value),
                         }))
                       }
                     />
@@ -569,6 +573,7 @@ export default function PricingPage() {
                   <input
                     type="checkbox"
                     id="isWeekend"
+                    aria-label="Weekend (Sat/Sun)"
                     checked={ruleForm.isWeekend ?? false}
                     onChange={(e) =>
                       setRuleForm((s) => ({ ...s, isWeekend: e.target.checked }))

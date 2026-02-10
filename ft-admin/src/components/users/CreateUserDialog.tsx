@@ -57,7 +57,7 @@ export function CreateUserDialog({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("USER");
+  const [role, setRole] = useState<string>("USER");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -70,7 +70,7 @@ export function CreateUserDialog({
         name,
         email,
         password,
-        role,
+        role: role as "ADMIN" | "MANAGER" | "OPERATION" | "SUPERADMIN",
       });
       if (err) {
         setError(err.message ?? "Failed to create user");
@@ -204,7 +204,7 @@ export function CreateUserDialog({
                 </FieldLabel>
                 <Select
                   value={role}
-                  onValueChange={(v) => setRole(v)}
+                  onValueChange={(v) => setRole(v as string)}
                   disabled={pending}
                 >
                   <SelectTrigger className="h-9 w-full">

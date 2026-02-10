@@ -4,10 +4,12 @@ import { MapsController } from './maps.controller.js';
 import { MapsService } from './maps.service.js';
 import { RouteQuoteService } from './route-quote.service.js';
 import { PricingModule } from '../pricing/pricing.module.js';
+import { PrismaService } from '../prisma.service.js';
+
 @Module({
   imports: [ConfigModule, PricingModule],
   controllers: [MapsController],
-  providers: [MapsService, RouteQuoteService],
+  providers: [PrismaService, MapsService, RouteQuoteService],
   exports: [MapsService, RouteQuoteService],
 })
 export class MapsModule {}
