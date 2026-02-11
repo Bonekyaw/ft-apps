@@ -326,4 +326,45 @@ export class MapsService {
 
     return merged;
   }
+
+  // ---------------------------------------------------------------------------
+  // Reverse Geocode (for "Pin on Map" feature)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Convert lat/lng to a human-readable address using Google Geocoding API.
+   * Returns the best formatted address, or null if nothing found.
+   */
+  async reverseGeocode(
+    latitude: number,
+    longitude: number,
+  ): Promise<{ address: string; placeId: string } | null> {
+    const apiKey = this.getApiKey();
+    const url = `https://maps.googleapis.com/maps/api/geocode/json`;
+
+    const { data } = await axios.get<{
+      status: string;
+      results?: Array<{
+        formatted_address: string;
+        place_id: string;
+      }>;
+    }>(url, {
+      params: {
+        latlng: `${latitude},${longitude}`,
+        key: apiKey,
+        language: 'en',
+      },
+      timeout: 10_000,
+    });
+
+    if (data.status !== 'OK' || !data.results?.length) {
+      return null;
+    }
+
+    const best = data.results[0];
+    return {
+      address: best.formatted_address,
+      placeId: best.place_id,
+    };
+  }
 }

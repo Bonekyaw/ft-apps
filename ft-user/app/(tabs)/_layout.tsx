@@ -26,6 +26,7 @@ export default function TabLayout() {
   return (
     <ThemeProvider value={DefaultTheme}>
       <NativeTabs
+        minimizeBehavior="onScrollDown"
         tintColor={Brand.primary}
         backgroundColor="#ffffff"
         blurEffect="systemChromeMaterial"

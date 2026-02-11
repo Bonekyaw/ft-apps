@@ -42,4 +42,19 @@ export class MapsController {
     const result = await this.routeQuote.getQuote(body);
     return result;
   }
+
+  /**
+   * Reverse geocode a lat/lng into a human-readable address.
+   * Used by the "Pin on Map" feature in the mobile app.
+   */
+  @Post('reverse-geocode')
+  @HttpCode(HttpStatus.OK)
+  async reverseGeocode(@Body() body: { latitude: number; longitude: number }) {
+    this.logger.log(`Reverse geocode: ${body.latitude}, ${body.longitude}`);
+    const result = await this.maps.reverseGeocode(
+      body.latitude,
+      body.longitude,
+    );
+    return result ?? { address: null, placeId: null };
+  }
 }

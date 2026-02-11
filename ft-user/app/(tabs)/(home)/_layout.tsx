@@ -8,6 +8,10 @@ export default function HomeLayout() {
         name="destination-search"
         options={{ animation: "slide_from_bottom" }}
       />
+      <Stack.Screen
+        name="pin-on-map"
+        options={{ animation: "slide_from_right" }}
+      />
     </Stack>
   );
 }

@@ -115,6 +115,76 @@ export async function placesAutocomplete(
   return data.suggestions ?? [];
 }
 
+// =========================================================================
+// Saved Places
+// =========================================================================
+
+export interface SavedPlace {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  icon: string | null;
+}
+
+export async function fetchSavedPlaces(): Promise<SavedPlace[]> {
+  const { data } = await api.get<{ places: SavedPlace[] }>("/user/saved-places");
+  return data.places ?? [];
+}
+
+// =========================================================================
+// Ride History
+// =========================================================================
+
+export interface RideHistoryItem {
+  id: string;
+  status: string;
+  pickupAddress: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropoffAddress: string;
+  dropoffLat: number;
+  dropoffLng: number;
+  totalFare: number;
+  currency: string;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export async function fetchRideHistory(
+  limit = 10,
+): Promise<RideHistoryItem[]> {
+  const { data } = await api.get<{ rides: RideHistoryItem[] }>(
+    `/user/history?limit=${limit}`,
+  );
+  return data.rides ?? [];
+}
+
+// =========================================================================
+// Reverse Geocode
+// =========================================================================
+
+export interface ReverseGeocodeResult {
+  address: string | null;
+  placeId: string | null;
+}
+
+export async function reverseGeocode(
+  latitude: number,
+  longitude: number,
+): Promise<ReverseGeocodeResult> {
+  const { data } = await api.post<ReverseGeocodeResult>(
+    "/maps/reverse-geocode",
+    { latitude, longitude },
+  );
+  return data;
+}
+
+// =========================================================================
+// Helpers
+// =========================================================================
+
 /** Helper to read error message from axios or unknown. */
 export function getErrorMessage(err: unknown): string {
   const ax = err as AxiosError<{ message?: string }>;
