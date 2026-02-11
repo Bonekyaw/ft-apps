@@ -1,23 +1,23 @@
-import React, { useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
-  Dimensions,
   Image,
   Pressable,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
 import Carousel, {
   type ICarouselInstance,
 } from "react-native-reanimated-carousel";
-import { useSharedValue } from "react-native-reanimated";
 
 import { useBanners, type Banner } from "@/hooks/use-home-data";
 import { Brand, BorderRadius, Spacing } from "@/constants/theme";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const CAROUSEL_WIDTH = SCREEN_WIDTH - Spacing.md * 2;
-const CAROUSEL_HEIGHT = 160;
+/** Banner aspect ratio (width : height). 2.5:1 looks good on both phone and tablet. */
+const BANNER_ASPECT = 2.5;
+/** Max carousel height so it doesn't become absurdly tall on iPad landscape. */
+const MAX_CAROUSEL_HEIGHT = 280;
 
 function BannerItem({
   item,
@@ -27,10 +27,7 @@ function BannerItem({
   onPress?: (banner: Banner) => void;
 }) {
   return (
-    <Pressable
-      onPress={() => onPress?.(item)}
-      style={styles.bannerItem}
-    >
+    <Pressable onPress={() => onPress?.(item)} style={styles.bannerItem}>
       <Image
         source={{ uri: item.imageUrl }}
         style={styles.bannerImage}
@@ -47,11 +44,27 @@ interface BannerCarouselProps {
 export function BannerCarousel({ onBannerPress }: BannerCarouselProps) {
   const { data: banners, isLoading } = useBanners();
   const carouselRef = useRef<ICarouselInstance>(null);
-  const progress = useSharedValue(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const { width: screenWidth } = useWindowDimensions();
+
+  // Responsive dimensions
+  const carouselWidth = screenWidth - Spacing.md * 2;
+  const carouselHeight = Math.min(
+    Math.round(carouselWidth / BANNER_ASPECT),
+    MAX_CAROUSEL_HEIGHT,
+  );
+
+  const handleProgressChange = useCallback(
+    (_offsetProgress: number, absoluteProgress: number) => {
+      const rounded = Math.round(absoluteProgress);
+      setActiveIndex((prev) => (prev !== rounded ? rounded : prev));
+    },
+    [],
+  );
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { height: carouselHeight }]}>
         <ActivityIndicator size="small" color={Brand.primary} />
       </View>
     );
@@ -66,19 +79,18 @@ export function BannerCarousel({ onBannerPress }: BannerCarouselProps) {
       <Carousel
         ref={carouselRef}
         data={banners}
-        width={CAROUSEL_WIDTH}
-        height={CAROUSEL_HEIGHT}
+        width={carouselWidth}
+        height={carouselHeight}
         loop={banners.length > 1}
         autoPlay={banners.length > 1}
         autoPlayInterval={4000}
         scrollAnimationDuration={600}
-        onProgressChange={progress}
+        onProgressChange={handleProgressChange}
         renderItem={({ item }) => (
           <BannerItem item={item} onPress={onBannerPress} />
         )}
       />
 
-      {/* Pagination dots */}
       {banners.length > 1 && (
         <View style={styles.pagination}>
           {banners.map((_, index) => (
@@ -86,7 +98,7 @@ export function BannerCarousel({ onBannerPress }: BannerCarouselProps) {
               key={index}
               style={[
                 styles.dot,
-                index === Math.round(progress.value) && styles.dotActive,
+                index === activeIndex % banners.length && styles.dotActive,
               ]}
             />
           ))}
@@ -102,7 +114,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
   },
   loadingContainer: {
-    height: CAROUSEL_HEIGHT,
     justifyContent: "center",
     alignItems: "center",
   },

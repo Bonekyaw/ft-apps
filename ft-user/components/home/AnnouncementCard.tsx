@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Image,
   Pressable,
+  useWindowDimensions,
 } from "react-native";
 
 import type { Announcement } from "@/hooks/use-home-data";
@@ -29,7 +30,22 @@ export function AnnouncementCard({
 }: AnnouncementCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const { width: screenWidth } = useWindowDimensions();
+
+  // Responsive thumbnail: ~22% of screen width, clamped for very large screens
+  const thumbSize = Math.min(Math.round(screenWidth * 0.22), 120);
+
+  // Pick the correct language — fallback to English if Myanmar is empty
+  const title =
+    locale === "my" && announcement.titleMy
+      ? announcement.titleMy
+      : announcement.title;
+
+  const body =
+    locale === "my" && announcement.bodyMy
+      ? announcement.bodyMy
+      : announcement.body;
 
   const formattedDate = new Date(announcement.createdAt).toLocaleDateString(
     undefined,
@@ -51,28 +67,34 @@ export function AnnouncementCard({
       {announcement.imageUrl ? (
         <Image
           source={{ uri: announcement.imageUrl }}
-          style={styles.thumbnail}
+          style={{ width: thumbSize, minHeight: thumbSize }}
           resizeMode="cover"
         />
       ) : (
-        <View style={[styles.thumbnailPlaceholder, { backgroundColor: Brand.primary + "18" }]}>
+        <View
+          style={[
+            styles.thumbnailPlaceholder,
+            {
+              width: thumbSize,
+              minHeight: thumbSize,
+              backgroundColor: Brand.primary + "18",
+            },
+          ]}
+        >
           <Text style={styles.thumbnailIcon}>📢</Text>
         </View>
       )}
 
       <View style={styles.content}>
-        <Text
-          style={[styles.title, { color: colors.text }]}
-          numberOfLines={1}
-        >
-          {announcement.title}
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+          {title}
         </Text>
 
         <Text
           style={[styles.body, { color: colors.textSecondary }]}
           numberOfLines={2}
         >
-          {announcement.body}
+          {body}
         </Text>
 
         <View style={styles.footer}>
@@ -90,22 +112,19 @@ export function AnnouncementCard({
   );
 }
 
+// 1.6 rem — smooth for Myanmar script
+const BODY_LINE_HEIGHT = Math.round(FontSize.xs * 1.6);
+const TITLE_LINE_HEIGHT = Math.round(FontSize.sm * 2);
+
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     overflow: "hidden",
-    marginHorizontal: Spacing.md,
     marginBottom: Spacing.sm,
   },
-  thumbnail: {
-    width: 88,
-    height: 88,
-  },
   thumbnailPlaceholder: {
-    width: 88,
-    height: 88,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -121,10 +140,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize.sm,
     fontWeight: "600",
+    lineHeight: TITLE_LINE_HEIGHT,
+    marginBottom: Spacing.xs,
   },
   body: {
     fontSize: FontSize.xs,
-    lineHeight: 16,
+    lineHeight: BODY_LINE_HEIGHT,
   },
   footer: {
     flexDirection: "row",

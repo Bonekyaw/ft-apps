@@ -13,7 +13,9 @@ export interface Banner {
 export interface Announcement {
   id: string;
   title: string;
+  titleMy: string | null;
   body: string;
+  bodyMy: string | null;
   imageUrl: string | null;
   linkUrl: string | null;
   createdAt: string;

@@ -14,13 +14,14 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
-import { LayoutDashboardIcon, UsersIcon, ShieldCheckIcon, CommandIcon, DollarSignIcon } from "lucide-react"
+import { LayoutDashboardIcon, UsersIcon, ShieldCheckIcon, CommandIcon, DollarSignIcon, MegaphoneIcon } from "lucide-react"
 
 function getNavMain(canAccessAdminManagement: boolean) {
   const items: { title: string; path: string; icon: React.ReactNode }[] = [
     { title: "Dashboard", path: "/", icon: <LayoutDashboardIcon className="size-4" /> },
     { title: "User Management", path: "/users", icon: <UsersIcon className="size-4" /> },
     { title: "Pricing", path: "/pricing", icon: <DollarSignIcon className="size-4" /> },
+    { title: "Content", path: "/content", icon: <MegaphoneIcon className="size-4" /> },
   ]
   if (canAccessAdminManagement) {
     items.push({ title: "Admin Management", path: "/admin-users", icon: <ShieldCheckIcon className="size-4" /> })

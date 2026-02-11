@@ -6,6 +6,7 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,6 +24,9 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTranslation } from "@/lib/i18n";
 import { Colors, Brand, FontSize, Spacing } from "@/constants/theme";
 
+/** Content never grows wider than this on tablets / landscape. */
+const MAX_CONTENT_WIDTH = 600;
+
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -31,11 +35,11 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+  const { width: screenWidth } = useWindowDimensions();
 
   const {
     data: announcements,
     isLoading: announcementsLoading,
-    isRefetching,
   } = useAnnouncements();
 
   const [refreshing, setRefreshing] = React.useState(false);
@@ -55,12 +59,25 @@ export default function HomeScreen() {
 
   const userName = session?.user?.name?.split(" ")[0] ?? null;
 
+  // Responsive: on wide screens, center content with a max width
+  const isWide = screenWidth > MAX_CONTENT_WIDTH;
+  const horizontalPadding = isWide
+    ? (screenWidth - MAX_CONTENT_WIDTH) / 2
+    : 0;
+
+  // Scale spacing slightly on larger screens
+  const sectionGap = isWide ? Spacing.xl : Spacing.lg;
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + Spacing.sm },
+          {
+            paddingTop: insets.top + Spacing.sm,
+            paddingLeft: horizontalPadding,
+            paddingRight: horizontalPadding,
+          },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -73,22 +90,17 @@ export default function HomeScreen() {
         }
       >
         {/* Search box + greeting */}
-        <SearchHeader
-          userName={userName}
-          onSearchPress={navigateToSearch}
-        />
+        <SearchHeader userName={userName} onSearchPress={navigateToSearch} />
 
         {/* Banner carousel */}
         <BannerCarousel />
 
-        {/* Spacer */}
-        <View style={styles.sectionSpacer} />
+        <View style={{ height: sectionGap }} />
 
         {/* Book a ride CTA */}
         <BookRideButton onPress={navigateToSearch} />
 
-        {/* Spacer */}
-        <View style={styles.sectionSpacer} />
+        <View style={{ height: sectionGap }} />
 
         {/* Announcements */}
         <View style={styles.sectionHeader}>
@@ -102,9 +114,11 @@ export default function HomeScreen() {
             <ActivityIndicator size="small" color={Brand.primary} />
           </View>
         ) : announcements && announcements.length > 0 ? (
-          announcements.map((item) => (
-            <AnnouncementCard key={item.id} announcement={item} />
-          ))
+          <View style={styles.announcementsList}>
+            {announcements.map((item) => (
+              <AnnouncementCard key={item.id} announcement={item} />
+            ))}
+          </View>
         ) : (
           <View style={styles.emptyAnnouncements}>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
@@ -127,9 +141,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  sectionSpacer: {
-    height: Spacing.lg,
-  },
   sectionHeader: {
     paddingHorizontal: Spacing.md,
     marginBottom: Spacing.sm,
@@ -137,6 +148,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: FontSize.lg,
     fontWeight: "700",
+  },
+  announcementsList: {
+    paddingHorizontal: Spacing.md,
   },
   announcementsLoading: {
     paddingVertical: Spacing.xl,

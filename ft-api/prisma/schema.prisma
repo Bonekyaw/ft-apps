@@ -560,8 +560,10 @@ model Banner {
 
 model Announcement {
   id       String  @id @default(cuid())
-  title    String
-  body     String  @db.Text
+  title    String  // English title
+  titleMy  String? // Myanmar title
+  body     String  @db.Text // English body
+  bodyMy   String? @db.Text // Myanmar body
   imageUrl String? // Optional thumbnail / cover image
   linkUrl  String? // Optional link for "Read more"
   priority Int     @default(0)

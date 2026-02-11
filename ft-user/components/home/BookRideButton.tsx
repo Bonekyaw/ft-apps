@@ -1,5 +1,11 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, Image } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  useWindowDimensions,
+} from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 import { useTranslation } from "@/lib/i18n";
@@ -11,17 +17,34 @@ interface BookRideButtonProps {
 
 export function BookRideButton({ onPress }: BookRideButtonProps) {
   const { t } = useTranslation();
+  const { width: screenWidth } = useWindowDimensions();
+
+  // Scale icon container slightly on wider screens
+  const iconSize = Math.min(Math.round(screenWidth * 0.13), 60);
+  const taxiIconSize = Math.min(Math.round(iconSize * 0.6), 36);
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        { opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+        {
+          opacity: pressed ? 0.9 : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        },
       ]}
     >
-      <View style={styles.iconContainer}>
-        <MaterialIcons name="local-taxi" size={32} color={Brand.secondary} />
+      <View
+        style={[
+          styles.iconContainer,
+          { width: iconSize, height: iconSize },
+        ]}
+      >
+        <MaterialIcons
+          name="local-taxi"
+          size={taxiIconSize}
+          color={Brand.secondary}
+        />
       </View>
 
       <View style={styles.textContainer}>
@@ -29,7 +52,11 @@ export function BookRideButton({ onPress }: BookRideButtonProps) {
         <Text style={styles.subtitle}>{t("home.bookRideSubtitle")}</Text>
       </View>
 
-      <MaterialIcons name="arrow-forward-ios" size={16} color={Brand.secondary} />
+      <MaterialIcons
+        name="arrow-forward-ios"
+        size={16}
+        color={Brand.secondary}
+      />
     </Pressable>
   );
 }
@@ -50,8 +77,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   iconContainer: {
-    width: 52,
-    height: 52,
     borderRadius: BorderRadius.md,
     backgroundColor: "rgba(255,255,255,0.35)",
     justifyContent: "center",

@@ -9,6 +9,7 @@ import VerifyOtpPage from "@/pages/VerifyOtp";
 import UsersPage from "@/pages/Users";
 import AdminUsersPage from "@/pages/AdminUsers";
 import PricingPage from "@/pages/Pricing";
+import ContentPage from "@/pages/Content";
 
 export const router = createBrowserRouter([
   {
@@ -45,6 +46,14 @@ export const router = createBrowserRouter([
         element: (
           <AdminGuard>
             <PricingPage />
+          </AdminGuard>
+        ),
+      },
+      {
+        path: "content",
+        element: (
+          <AdminGuard>
+            <ContentPage />
           </AdminGuard>
         ),
       },
