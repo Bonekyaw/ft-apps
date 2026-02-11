@@ -25,6 +25,7 @@ import { useTranslation } from "@/lib/i18n";
 import {
   reverseGeocode,
   placesAutocomplete,
+  fetchPlaceCoordinates,
   type PlacesSuggestion,
 } from "@/lib/api";
 import {
@@ -173,17 +174,32 @@ export default function SetPickupScreen() {
     [region?.latitude, region?.longitude],
   );
 
-  // Select a search suggestion
+  // Select a search suggestion — resolve coordinates and move the map
   const handleSelectSuggestion = useCallback(
-    (suggestion: PlacesSuggestion) => {
+    async (suggestion: PlacesSuggestion) => {
       setShowSearch(false);
       setSearchQuery("");
       setSearchSuggestions([]);
-      // Use the description as address for now
       setAddress(suggestion.description);
-      // We need lat/lng from the suggestion — use reverse geocode or place details
-      // For now, set address text and keep current map position
-      // The user can adjust the pin if needed
+
+      if (!suggestion.placeId) return;
+
+      try {
+        const coords = await fetchPlaceCoordinates(suggestion.placeId);
+        if (coords.latitude != null && coords.longitude != null) {
+          const newRegion: Region = {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            latitudeDelta: 0.002,
+            longitudeDelta: 0.002,
+          };
+          setRegion(newRegion);
+          setAddress(coords.address ?? suggestion.description);
+          mapRef.current?.animateToRegion(newRegion, 500);
+        }
+      } catch {
+        // Keep the address text; user can adjust the pin manually
+      }
     },
     [],
   );

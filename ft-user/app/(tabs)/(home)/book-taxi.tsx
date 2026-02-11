@@ -139,45 +139,39 @@ export default function BookTaxiScreen() {
     );
   }, [routeCoords, speedReadingIntervals]);
 
-  // ── Fetch route quote on mount ──
-  useEffect(() => {
+  // ── Load route quote (reusable — called on mount + retry) ──
+  const loadRouteQuote = useCallback(async () => {
     if (!pickup || !finalDestination) return;
+    setIsLoadingRoute(true);
+    setRouteError(null);
+    try {
+      const result = await fetchRouteQuote({
+        pickupLat: pickup.latitude,
+        pickupLng: pickup.longitude,
+        dropoffLat: finalDestination.latitude,
+        dropoffLng: finalDestination.longitude,
+        waypoints,
+      });
+      setRouteQuote({
+        routeQuoteId: result.routeQuoteId,
+        encodedPolyline: result.encodedPolyline,
+        speedReadingIntervals: result.speedReadingIntervals,
+        standardFare: result.standardFareMmkt,
+        plusFare: result.plusFareMmkt,
+        distanceKm: result.distanceKm,
+        durationMinutes: result.durationMinutes,
+        currency: result.currency,
+      });
+    } catch (err) {
+      setRouteError(getErrorMessage(err));
+    } finally {
+      setIsLoadingRoute(false);
+    }
+  }, [pickup, finalDestination, waypoints, setRouteQuote]);
 
-    let cancelled = false;
-
-    const load = async () => {
-      setIsLoadingRoute(true);
-      setRouteError(null);
-      try {
-        const result = await fetchRouteQuote({
-          pickupLat: pickup.latitude,
-          pickupLng: pickup.longitude,
-          dropoffLat: finalDestination.latitude,
-          dropoffLng: finalDestination.longitude,
-          waypoints,
-        });
-        if (cancelled) return;
-        setRouteQuote({
-          routeQuoteId: result.routeQuoteId,
-          encodedPolyline: result.encodedPolyline,
-          speedReadingIntervals: result.speedReadingIntervals,
-          standardFare: result.standardFareMmkt,
-          plusFare: result.plusFareMmkt,
-          distanceKm: result.distanceKm,
-          durationMinutes: result.durationMinutes,
-          currency: result.currency,
-        });
-      } catch (err) {
-        if (!cancelled) setRouteError(getErrorMessage(err));
-      } finally {
-        if (!cancelled) setIsLoadingRoute(false);
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
+  // ── Fetch on mount ──
+  useEffect(() => {
+    void loadRouteQuote();
     // Only run on mount — stops won't change on this screen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -370,6 +364,26 @@ export default function BookTaxiScreen() {
             <Text style={[styles.loadingText, { color: Brand.error }]}>
               {t("bookTaxi.routeError")}
             </Text>
+            <View style={styles.errorActions}>
+              <Pressable
+                onPress={() => void loadRouteQuote()}
+                style={[styles.errorBtn, { backgroundColor: Brand.primary }]}
+              >
+                <MaterialIcons name="refresh" size={18} color={Brand.secondary} />
+                <Text style={[styles.errorBtnText, { color: Brand.secondary }]}>
+                  {t("bookTaxi.tryAgain")}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleBack}
+                style={[styles.errorBtn, { backgroundColor: colors.inputBackground }]}
+              >
+                <MaterialIcons name="arrow-back" size={18} color={colors.text} />
+                <Text style={[styles.errorBtnText, { color: colors.text }]}>
+                  {t("bookTaxi.goBack")}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
@@ -638,6 +652,23 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: FontSize.sm,
     textAlign: "center",
+  },
+  errorActions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  errorBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  errorBtnText: {
+    fontSize: FontSize.sm,
+    fontWeight: "600",
   },
 
   // Trip summary

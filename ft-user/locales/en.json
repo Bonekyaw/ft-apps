@@ -197,6 +197,8 @@
     "book": "Book Taxi",
     "loadingRoute": "Finding best route…",
     "routeError": "Could not find a route. Please try again.",
+    "tryAgain": "Try Again",
+    "goBack": "Go Back",
     "pickupNote": "Pickup Note",
     "min": "min",
     "km": "km",
