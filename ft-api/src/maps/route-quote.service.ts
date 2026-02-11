@@ -8,6 +8,8 @@ export interface RouteQuoteInput {
   pickupLng: number;
   dropoffLat: number;
   dropoffLng: number;
+  /** Intermediate stops between pickup and final dropoff. */
+  waypoints?: { lat: number; lng: number }[];
   vehicleType?: string;
   /** Township name of the pickup location. */
   originTownship?: string;
@@ -41,6 +43,7 @@ export class RouteQuoteService {
     const route = await this.maps.computeRoute(
       { lat: pickupLat, lng: pickupLng },
       { lat: dropoffLat, lng: dropoffLng },
+      input.waypoints,
     );
 
     // Calculate Standard fare (with optional township surcharge)

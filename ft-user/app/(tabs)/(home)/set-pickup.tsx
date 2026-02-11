@@ -25,9 +25,6 @@ import { useTranslation } from "@/lib/i18n";
 import {
   reverseGeocode,
   placesAutocomplete,
-  uploadPickupPhoto,
-  createRide,
-  getErrorMessage,
   type PlacesSuggestion,
 } from "@/lib/api";
 import {
@@ -72,7 +69,6 @@ export default function SetPickupScreen() {
 
   // Zustand store
   const stops = useRideBookingStore((s) => s.stops);
-  const vehicleType = useRideBookingStore((s) => s.vehicleType);
   const setPickup = useRideBookingStore((s) => s.setPickup);
   const setPickupNote = useRideBookingStore((s) => s.setPickupNote);
   const setPickupPhotoUri = useRideBookingStore((s) => s.setPickupPhotoUri);
@@ -81,15 +77,10 @@ export default function SetPickupScreen() {
 
   // Map & location state
   const mapRef = useRef<MapView>(null);
-  const [region, setRegion] = useState<Region>({
-    latitude: DEFAULT_LAT,
-    longitude: DEFAULT_LNG,
-    latitudeDelta: 0.005,
-    longitudeDelta: 0.005,
-  });
+  const [region, setRegion] = useState<Region | null>(null);
+  const [locationReady, setLocationReady] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Search state
@@ -100,22 +91,39 @@ export default function SetPickupScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Get current location on mount
+  // Get current location on mount — resolve BEFORE showing the map
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+      let lat = DEFAULT_LAT;
+      let lng = DEFAULT_LNG;
+
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          // Try last known first (instant, no GPS wait)
+          const last = await Location.getLastKnownPositionAsync();
+          if (last) {
+            lat = last.coords.latitude;
+            lng = last.coords.longitude;
+          } else {
+            const loc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            lat = loc.coords.latitude;
+            lng = loc.coords.longitude;
+          }
+        }
+      } catch {
+        // Fall back to defaults
+      }
+
+      setRegion({
+        latitude: lat,
+        longitude: lng,
+        latitudeDelta: 0.002,
+        longitudeDelta: 0.002,
       });
-      const newRegion: Region = {
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      };
-      setRegion(newRegion);
-      mapRef.current?.animateToRegion(newRegion, 500);
+      setLocationReady(true);
     })();
   }, []);
 
@@ -153,8 +161,8 @@ export default function SetPickupScreen() {
       searchDebounceRef.current = setTimeout(async () => {
         try {
           const results = await placesAutocomplete(text, undefined, {
-            latitude: region.latitude,
-            longitude: region.longitude,
+            latitude: region?.latitude ?? DEFAULT_LAT,
+            longitude: region?.longitude ?? DEFAULT_LNG,
           });
           setSearchSuggestions(results);
         } catch {
@@ -162,7 +170,7 @@ export default function SetPickupScreen() {
         }
       }, 400);
     },
-    [region.latitude, region.longitude],
+    [region?.latitude, region?.longitude],
   );
 
   // Select a search suggestion
@@ -250,70 +258,36 @@ export default function SetPickupScreen() {
     setPickupPhotoUri(null);
   }, [setPickupPhotoUri]);
 
-  // ── Confirm booking ──
-  const handleConfirmBooking = useCallback(async () => {
-    // Get first filled destination stop
-    const firstStop = stops.find((s) => s !== null);
-    if (!firstStop) return;
+  // ── Confirm pickup & navigate to book-taxi ──
+  const handleConfirmBooking = useCallback(() => {
+    if (!region) return;
+    // Save pickup details to Zustand store
+    setPickup({
+      address:
+        address ??
+        `${region.latitude.toFixed(6)}, ${region.longitude.toFixed(6)}`,
+      latitude: region.latitude,
+      longitude: region.longitude,
+    });
+    setPickupNote(pickupNote);
 
-    setIsSubmitting(true);
-    try {
-      let photoUrl: string | undefined;
-
-      // Upload photo if attached
-      if (pickupPhotoUri) {
-        photoUrl = await uploadPickupPhoto(pickupPhotoUri);
-      }
-
-      // Save pickup to store
-      setPickup({
-        address:
-          address ??
-          `${region.latitude.toFixed(6)}, ${region.longitude.toFixed(6)}`,
-        latitude: region.latitude,
-        longitude: region.longitude,
-      });
-      setPickupNote(pickupNote);
-
-      // Create the ride
-      await createRide({
-        pickupAddress:
-          address ??
-          `${region.latitude.toFixed(6)}, ${region.longitude.toFixed(6)}`,
-        pickupLat: region.latitude,
-        pickupLng: region.longitude,
-        dropoffAddress: firstStop.address,
-        dropoffLat: firstStop.latitude,
-        dropoffLng: firstStop.longitude,
-        vehicleType:
-          vehicleType === "ANY" ? "ECONOMY" : vehicleType,
-        passengerNote: pickupNote || undefined,
-        pickupPhotoUrl: photoUrl,
-      });
-
-      // Navigate back to home (or to ride tracking in future)
-      router.dismissAll();
-    } catch (err) {
-      Alert.alert("Error", getErrorMessage(err));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [
-    stops,
-    pickupPhotoUri,
-    address,
-    region,
-    pickupNote,
-    vehicleType,
-    setPickup,
-    setPickupNote,
-    router,
-  ]);
+    // Navigate to the booking screen (route preview + fare selection)
+    router.push("/(tabs)/(home)/book-taxi");
+  }, [address, region, pickupNote, setPickup, setPickupNote, router]);
 
   // ── Responsive padding ──
   const horizontalPadding = screenWidth >= 768 ? Spacing.xl : Spacing.md;
 
   const hasDestination = stops.some((s) => s !== null);
+
+  // Don't render map until we have a real starting region
+  if (!locationReady || !region) {
+    return (
+      <View style={[styles.screen, styles.loadingScreen]}>
+        <ActivityIndicator size="large" color={Brand.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -322,15 +296,24 @@ export default function SetPickupScreen() {
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
-        initialRegion={region}
+        initialCamera={{
+          center: {
+            latitude: region.latitude,
+            longitude: region.longitude,
+          },
+          pitch: 0,
+          heading: 0,
+          zoom: 17,
+        }}
         showsUserLocation
         showsMyLocationButton={false}
         onRegionChangeComplete={handleRegionChange}
       />
 
-      {/* Center pin */}
+
+      {/* Center pin (movable — green) */}
       <View style={styles.pinWrapper} pointerEvents="none">
-        <MaterialIcons name="place" size={48} color={Brand.primary} />
+        <MaterialIcons name="place" size={48} color="#0a9830" />
       </View>
 
       {/* ── Floating top bar ── */}
@@ -360,33 +343,26 @@ export default function SetPickupScreen() {
         {/* Confirm booking — top-right */}
         <Pressable
           onPress={handleConfirmBooking}
-          disabled={isSubmitting || !hasDestination}
+          disabled={!hasDestination}
           style={[
             styles.confirmChip,
             {
-              backgroundColor:
-                isSubmitting || !hasDestination
-                  ? colors.inputBackground
-                  : Brand.primary,
+              backgroundColor: !hasDestination
+                ? colors.inputBackground
+                : Brand.primary,
             },
           ]}
         >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color={Brand.primary} />
-          ) : (
-            <>
-              <MaterialIcons
-                name="check"
-                size={18}
-                color={Brand.secondary}
-              />
-              <Text
-                style={[styles.confirmChipText, { color: Brand.secondary }]}
-              >
-                {t("pickup.confirmBooking")}
-              </Text>
-            </>
-          )}
+          <MaterialIcons
+            name="check"
+            size={18}
+            color={Brand.secondary}
+          />
+          <Text
+            style={[styles.confirmChipText, { color: Brand.secondary }]}
+          >
+            {t("pickup.confirmBooking")}
+          </Text>
         </Pressable>
       </View>
 
@@ -567,19 +543,6 @@ export default function SetPickupScreen() {
             )}
           </View>
 
-          {/* Submitting indicator */}
-          {isSubmitting && (
-            <View style={styles.submittingRow}>
-              <ActivityIndicator size="small" color={Brand.primary} />
-              <Text
-                style={[styles.submittingText, { color: colors.textMuted }]}
-              >
-                {pickupPhotoUri
-                  ? t("pickup.uploading")
-                  : t("pickup.creating")}
-              </Text>
-            </View>
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -594,6 +557,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  loadingScreen: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   map: {
     flex: 1,

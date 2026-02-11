@@ -162,6 +162,29 @@ export async function fetchRideHistory(
 }
 
 // =========================================================================
+// Place Details (resolve placeId → lat/lng)
+// =========================================================================
+
+export interface PlaceCoordinates {
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
+}
+
+/**
+ * Resolve a Google Place ID to lat/lng + address via the backend proxy.
+ * Used after autocomplete selection (which only returns placeId, not coords).
+ */
+export async function fetchPlaceCoordinates(
+  placeId: string,
+): Promise<PlaceCoordinates> {
+  const { data } = await api.post<PlaceCoordinates>("/maps/place-details", {
+    placeId,
+  });
+  return data;
+}
+
+// =========================================================================
 // Reverse Geocode
 // =========================================================================
 
@@ -178,6 +201,44 @@ export async function reverseGeocode(
     "/maps/reverse-geocode",
     { latitude, longitude },
   );
+  return data;
+}
+
+// =========================================================================
+// Route Quote
+// =========================================================================
+
+export interface RouteQuotePayload {
+  pickupLat: number;
+  pickupLng: number;
+  dropoffLat: number;
+  dropoffLng: number;
+  /** Intermediate stops between pickup and final dropoff. */
+  waypoints?: { lat: number; lng: number }[];
+  originTownship?: string;
+  destinationTownship?: string;
+}
+
+export interface RouteQuoteResult {
+  distanceMeters: number;
+  distanceKm: number;
+  durationSeconds: number;
+  durationMinutes: number;
+  encodedPolyline: string;
+  standardFareMmkt: number;
+  plusFareMmkt: number;
+  currency: string;
+  routeQuoteId: string;
+}
+
+/**
+ * Fetch a route quote from the backend (Google Routes API proxy + fare calc).
+ * Returns polyline, distance, duration, and fares for Standard & Plus.
+ */
+export async function fetchRouteQuote(
+  payload: RouteQuotePayload,
+): Promise<RouteQuoteResult> {
+  const { data } = await api.post<RouteQuoteResult>("/maps/route", payload);
   return data;
 }
 

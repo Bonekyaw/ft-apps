@@ -77,6 +77,7 @@ export class MapsService {
   async computeRoute(
     origin: { lat: number; lng: number },
     destination: { lat: number; lng: number },
+    waypoints?: { lat: number; lng: number }[],
   ): Promise<{
     distanceKm: number;
     durationMinutes: number;
@@ -86,7 +87,7 @@ export class MapsService {
   }> {
     const apiKey = this.getApiKey();
 
-    const body = {
+    const body: Record<string, unknown> = {
       origin: {
         location: { latLng: { latitude: origin.lat, longitude: origin.lng } },
       },
@@ -100,6 +101,13 @@ export class MapsService {
       languageCode: 'en-US',
       units: 'METRIC',
     };
+
+    // Add intermediate waypoints for multi-stop routes
+    if (waypoints?.length) {
+      body.intermediates = waypoints.map((wp) => ({
+        location: { latLng: { latitude: wp.lat, longitude: wp.lng } },
+      }));
+    }
 
     const { data } = await axios.post<{
       routes?: Array<{
@@ -398,6 +406,47 @@ export class MapsService {
 
     const best = this.pickNonPlusCode(data.results);
     return best;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Geocode by Place ID
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Resolve a Google Place ID to lat/lng and address using the Geocoding API.
+   * Returns null when the placeId is invalid or Google returns no results.
+   */
+  async geocodeByPlaceId(placeId: string): Promise<{
+    latitude: number;
+    longitude: number;
+    address: string;
+  } | null> {
+    const apiKey = this.getApiKey();
+    const url = 'https://maps.googleapis.com/maps/api/geocode/json';
+
+    const { data } = await axios.get<{
+      status: string;
+      results?: Array<{
+        formatted_address: string;
+        place_id: string;
+        geometry?: { location?: { lat: number; lng: number } };
+      }>;
+    }>(url, {
+      params: { place_id: placeId, key: apiKey, language: 'en' },
+      timeout: 10_000,
+    });
+
+    if (data.status !== 'OK' || !data.results?.length) return null;
+
+    const result = data.results[0];
+    const loc = result.geometry?.location;
+    if (!loc) return null;
+
+    return {
+      latitude: loc.lat,
+      longitude: loc.lng,
+      address: result.formatted_address,
+    };
   }
 
   /**

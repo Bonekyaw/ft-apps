@@ -44,6 +44,18 @@ export class MapsController {
   }
 
   /**
+   * Resolve a Google Place ID to lat/lng + address.
+   * Used when the user selects a place from autocomplete (which only returns placeId, not coordinates).
+   */
+  @Post('place-details')
+  @HttpCode(HttpStatus.OK)
+  async placeDetails(@Body() body: { placeId: string }) {
+    this.logger.log(`Place details: ${body.placeId}`);
+    const result = await this.maps.geocodeByPlaceId(body.placeId);
+    return result ?? { latitude: null, longitude: null, address: null };
+  }
+
+  /**
    * Reverse geocode a lat/lng into a human-readable address.
    * Used by the "Pin on Map" feature in the mobile app.
    */

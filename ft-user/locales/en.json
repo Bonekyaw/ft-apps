@@ -187,6 +187,22 @@
     "photoHint": "Add a photo to help the driver find you",
     "cancel": "Cancel"
   },
+  "bookTaxi": {
+    "title": "Book Taxi",
+    "standardTaxi": "Standard Taxi",
+    "taxiPlus": "Taxi Plus",
+    "plusBadge": "+20%",
+    "distance": "Distance",
+    "duration": "Duration",
+    "book": "Book Taxi",
+    "loadingRoute": "Finding best route…",
+    "routeError": "Could not find a route. Please try again.",
+    "pickupNote": "Pickup Note",
+    "min": "min",
+    "km": "km",
+    "booking": "Booking your ride…",
+    "selectFare": "Select your ride"
+  },
   "explore": {
     "searchPlaceholder": "Search for a place or address"
   },

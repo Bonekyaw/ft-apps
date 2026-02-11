@@ -39,6 +39,15 @@ interface RideBookingState {
   pickupNote: string;
   pickupPhotoUri: string | null;
 
+  // Route quote
+  routeQuoteId: string | null;
+  encodedPolyline: string | null;
+  standardFare: number | null;
+  plusFare: number | null;
+  distanceKm: number | null;
+  durationMinutes: number | null;
+  currency: string;
+
   // Actions — stops
   setStop: (index: number, location: StopLocation | null) => void;
   addStop: () => boolean;
@@ -54,6 +63,17 @@ interface RideBookingState {
   setPickup: (location: StopLocation | null) => void;
   setPickupNote: (note: string) => void;
   setPickupPhotoUri: (uri: string | null) => void;
+
+  // Actions — route quote
+  setRouteQuote: (data: {
+    routeQuoteId: string;
+    encodedPolyline: string;
+    standardFare: number;
+    plusFare: number;
+    distanceKm: number;
+    durationMinutes: number;
+    currency: string;
+  }) => void;
 
   // Reset everything
   reset: () => void;
@@ -72,6 +92,13 @@ const INITIAL_STATE = {
   pickup: null as StopLocation | null,
   pickupNote: "",
   pickupPhotoUri: null as string | null,
+  routeQuoteId: null as string | null,
+  encodedPolyline: null as string | null,
+  standardFare: null as number | null,
+  plusFare: null as number | null,
+  distanceKm: null as number | null,
+  durationMinutes: null as number | null,
+  currency: "MMK",
 };
 
 // ---------------------------------------------------------------------------
@@ -131,6 +158,18 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
 
   setPickupPhotoUri(uri) {
     set({ pickupPhotoUri: uri });
+  },
+
+  setRouteQuote(data) {
+    set({
+      routeQuoteId: data.routeQuoteId,
+      encodedPolyline: data.encodedPolyline,
+      standardFare: data.standardFare,
+      plusFare: data.plusFare,
+      distanceKm: data.distanceKm,
+      durationMinutes: data.durationMinutes,
+      currency: data.currency,
+    });
   },
 
   reset() {

@@ -19,7 +19,11 @@ import { useQuery } from "@tanstack/react-query";
 import * as Location from "expo-location";
 
 import { useTranslation } from "@/lib/i18n";
-import { placesAutocomplete, type PlacesSuggestion } from "@/lib/api";
+import {
+  placesAutocomplete,
+  fetchPlaceCoordinates,
+  type PlacesSuggestion,
+} from "@/lib/api";
 import { Colors, Brand, FontSize, Spacing, BorderRadius } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTabBarVisibility } from "@/context/tab-bar-context";
@@ -72,6 +76,7 @@ export default function DestinationSearchScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [isResolvingPlace, setIsResolvingPlace] = useState(false);
   const [activeTab, setActiveTab] = useState<"recent" | "saved">("recent");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -152,20 +157,44 @@ export default function DestinationSearchScreen() {
     [router, setActiveStopIndex],
   );
 
-  // Select a suggestion from autocomplete
+  // Select a suggestion from autocomplete — resolve placeId to lat/lng
   const handleSelectSuggestion = useCallback(
-    (item: PlacesSuggestion) => {
-      const stop: StopLocation = {
+    async (item: PlacesSuggestion) => {
+      setIsSearching(false);
+      setSearchQuery("");
+      Keyboard.dismiss();
+
+      // Show resolving state while we fetch coordinates
+      setIsResolvingPlace(true);
+
+      // Immediately display the address in the stop list
+      const placeholder: StopLocation = {
         address: item.description,
         latitude: 0,
         longitude: 0,
         placeId: item.placeId,
         mainText: item.mainText,
       };
-      setStop(activeStopIndex, stop);
-      setIsSearching(false);
-      setSearchQuery("");
-      Keyboard.dismiss();
+      setStop(activeStopIndex, placeholder);
+
+      // Resolve coordinates via backend proxy
+      if (item.placeId) {
+        try {
+          const coords = await fetchPlaceCoordinates(item.placeId);
+          if (coords.latitude != null && coords.longitude != null) {
+            setStop(activeStopIndex, {
+              ...placeholder,
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              address: coords.address ?? item.description,
+            });
+          }
+        } catch {
+          // Keep the stop with address only — user can retry or pin on map
+        }
+      }
+
+      setIsResolvingPlace(false);
     },
     [activeStopIndex, setStop],
   );
@@ -192,19 +221,20 @@ export default function DestinationSearchScreen() {
     [activeStopIndex, setStop],
   );
 
-  // Continue
+  // Continue — only allow when at least one stop has resolved coordinates
+  const hasReadyStop = stops.some(
+    (s) => s !== null && s.latitude !== 0 && s.longitude !== 0,
+  );
+
   const handleContinue = useCallback(() => {
-    const hasAtLeastOne = stops.some((s) => s !== null);
-    if (!hasAtLeastOne) return;
+    if (!hasReadyStop) return;
     router.push("/(tabs)/(home)/set-pickup");
-  }, [stops, router]);
+  }, [hasReadyStop, router]);
 
   // Responsive
   const horizontalPadding = screenWidth > MAX_CONTENT_WIDTH
     ? (screenWidth - MAX_CONTENT_WIDTH) / 2
     : 0;
-
-  const hasFilledStop = stops.some((s) => s !== null);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -231,18 +261,22 @@ export default function DestinationSearchScreen() {
         {/* Continue in header (iOS escapes native tab, Android has tab hidden) */}
         <Pressable
           onPress={handleContinue}
-          disabled={!hasFilledStop}
+          disabled={!hasReadyStop || isResolvingPlace}
           style={styles.headerContinueBtn}
           hitSlop={8}
         >
-          <Text
-            style={[
-              styles.headerContinueText,
-              { color: hasFilledStop ? Brand.primary : colors.textMuted },
-            ]}
-          >
-            {t("destination.continue")}
-          </Text>
+          {isResolvingPlace ? (
+            <ActivityIndicator size="small" color={Brand.primary} />
+          ) : (
+            <Text
+              style={[
+                styles.headerContinueText,
+                { color: hasReadyStop ? Brand.primary : colors.textMuted },
+              ]}
+            >
+              {t("destination.continue")}
+            </Text>
+          )}
         </Pressable>
       </View>
 

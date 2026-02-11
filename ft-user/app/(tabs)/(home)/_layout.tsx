@@ -16,6 +16,10 @@ export default function HomeLayout() {
         name="set-pickup"
         options={{ animation: "slide_from_right" }}
       />
+      <Stack.Screen
+        name="book-taxi"
+        options={{ animation: "slide_from_right" }}
+      />
     </Stack>
   );
 }
