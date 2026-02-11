@@ -5,12 +5,19 @@ import axios, { AxiosError } from 'axios';
 const PLACES_AUTOCOMPLETE_URL =
   'https://places.googleapis.com/v1/places:autocomplete';
 
-/** Routes API (Compute Routes – Basic SKU). Only request essentials to keep cost low. */
+/** Routes API (Compute Routes – Preferred SKU for traffic-aware routing). */
 const ROUTES_COMPUTE_URL =
   'https://routes.googleapis.com/directions/v2:computeRoutes';
 
 const ROUTES_FIELD_MASK =
-  'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline';
+  'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.travelAdvisory.speedReadingIntervals';
+
+/** Traffic speed classification returned by Google Routes API. */
+export interface SpeedReadingInterval {
+  startPolylinePointIndex: number;
+  endPolylinePointIndex: number;
+  speed: 'NORMAL' | 'SLOW' | 'TRAFFIC_JAM';
+}
 
 export interface AutocompleteRequestBody {
   search: string;
@@ -70,9 +77,8 @@ export class MapsService {
   }
 
   /**
-   * Compute route between two points using Google Routes API (Basic SKU).
-   * Only requests duration, distanceMeters, and polyline.encodedPolyline.
-   * Returns distance in KM and duration in Minutes.
+   * Compute route between two points using Google Routes API (Preferred SKU).
+   * Requests traffic-aware routing with speed reading intervals for polyline coloring.
    */
   async computeRoute(
     origin: { lat: number; lng: number },
@@ -84,6 +90,7 @@ export class MapsService {
     distanceMeters: number;
     durationSeconds: number;
     encodedPolyline: string;
+    speedReadingIntervals: SpeedReadingInterval[];
   }> {
     const apiKey = this.getApiKey();
 
@@ -97,7 +104,9 @@ export class MapsService {
         },
       },
       travelMode: 'DRIVE',
+      routingPreference: 'TRAFFIC_AWARE_OPTIMAL',
       computeAlternativeRoutes: false,
+      extraComputations: ['TRAFFIC_ON_POLYLINE'],
       languageCode: 'en-US',
       units: 'METRIC',
     };
@@ -114,6 +123,9 @@ export class MapsService {
         distanceMeters?: number;
         duration?: string;
         polyline?: { encodedPolyline?: string };
+        travelAdvisory?: {
+          speedReadingIntervals?: SpeedReadingInterval[];
+        };
       }>;
     }>(ROUTES_COMPUTE_URL, body, {
       headers: {
@@ -142,12 +154,16 @@ export class MapsService {
     const distanceKm = distanceMeters / 1000;
     const durationMinutes = durationSeconds / 60;
 
+    const speedReadingIntervals =
+      route.travelAdvisory?.speedReadingIntervals ?? [];
+
     return {
       distanceKm,
       durationMinutes,
       distanceMeters,
       durationSeconds,
       encodedPolyline,
+      speedReadingIntervals,
     };
   }
 

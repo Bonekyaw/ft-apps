@@ -219,12 +219,19 @@ export interface RouteQuotePayload {
   destinationTownship?: string;
 }
 
+export interface SpeedReadingInterval {
+  startPolylinePointIndex: number;
+  endPolylinePointIndex: number;
+  speed: "NORMAL" | "SLOW" | "TRAFFIC_JAM";
+}
+
 export interface RouteQuoteResult {
   distanceMeters: number;
   distanceKm: number;
   durationSeconds: number;
   durationMinutes: number;
   encodedPolyline: string;
+  speedReadingIntervals: SpeedReadingInterval[];
   standardFareMmkt: number;
   plusFareMmkt: number;
   currency: string;

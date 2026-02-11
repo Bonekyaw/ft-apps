@@ -23,6 +23,7 @@ import { useAnnouncements } from "@/hooks/use-home-data";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTranslation } from "@/lib/i18n";
 import { Colors, Brand, FontSize, Spacing } from "@/constants/theme";
+import { useRideBookingStore } from "@/store/ride-booking";
 
 /** Content never grows wider than this on tablets / landscape. */
 const MAX_CONTENT_WIDTH = 600;
@@ -53,7 +54,11 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  const resetBooking = useRideBookingStore((s) => s.reset);
+
   const navigateToSearch = () => {
+    // Reset any stale booking data so the user always starts a fresh flow
+    resetBooking();
     router.push("/(tabs)/(home)/destination-search");
   };
 

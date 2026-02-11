@@ -10,15 +10,26 @@ export default function HomeLayout() {
       />
       <Stack.Screen
         name="pin-on-map"
-        options={{ animation: "slide_from_right" }}
+        options={{
+          animation: "slide_from_right",
+          // Disable swipe-back: full-screen MapView gesture handlers conflict
+          // with the stack navigator's swipe gesture and corrupt the touch system.
+          gestureEnabled: false,
+        }}
       />
       <Stack.Screen
         name="set-pickup"
-        options={{ animation: "slide_from_right" }}
+        options={{
+          animation: "slide_from_right",
+          gestureEnabled: false,
+        }}
       />
       <Stack.Screen
         name="book-taxi"
-        options={{ animation: "slide_from_right" }}
+        options={{
+          animation: "slide_from_right",
+          gestureEnabled: false,
+        }}
       />
     </Stack>
   );

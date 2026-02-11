@@ -25,6 +25,7 @@ import {
   uploadPickupPhoto,
   createRide,
   getErrorMessage,
+  type SpeedReadingInterval,
 } from "@/lib/api";
 import { decodePolyline } from "@/lib/polyline";
 import {
@@ -71,11 +72,13 @@ export default function BookTaxiScreen() {
   const setRouteQuote = useRideBookingStore((s) => s.setRouteQuote);
   const routeQuoteId = useRideBookingStore((s) => s.routeQuoteId);
   const encodedPolyline = useRideBookingStore((s) => s.encodedPolyline);
+  const speedReadingIntervals = useRideBookingStore((s) => s.speedReadingIntervals);
   const standardFare = useRideBookingStore((s) => s.standardFare);
   const plusFare = useRideBookingStore((s) => s.plusFare);
   const distanceKm = useRideBookingStore((s) => s.distanceKm);
   const durationMinutes = useRideBookingStore((s) => s.durationMinutes);
   const currency = useRideBookingStore((s) => s.currency);
+  const clearRouteQuote = useRideBookingStore((s) => s.clearRouteQuote);
   const reset = useRideBookingStore((s) => s.reset);
 
   // ── Local state ──
@@ -110,6 +113,32 @@ export default function BookTaxiScreen() {
     [encodedPolyline],
   );
 
+  // Build traffic-colored polyline segments
+  const trafficSegments = useMemo(() => {
+    if (routeCoords.length < 2) return [];
+    if (!speedReadingIntervals?.length) {
+      // Fallback: single green polyline
+      return [{ key: "fallback", coords: routeCoords, color: "#4CAF50" }];
+    }
+
+    const SPEED_COLORS: Record<string, string> = {
+      NORMAL: "#4CAF50",
+      SLOW: "#FFC107",
+      TRAFFIC_JAM: "#F44336",
+    };
+
+    return speedReadingIntervals.map(
+      (interval: SpeedReadingInterval, idx: number) => ({
+        key: `traffic-${idx}`,
+        coords: routeCoords.slice(
+          interval.startPolylinePointIndex,
+          interval.endPolylinePointIndex + 1,
+        ),
+        color: SPEED_COLORS[interval.speed] ?? "#4CAF50",
+      }),
+    );
+  }, [routeCoords, speedReadingIntervals]);
+
   // ── Fetch route quote on mount ──
   useEffect(() => {
     if (!pickup || !finalDestination) return;
@@ -131,6 +160,7 @@ export default function BookTaxiScreen() {
         setRouteQuote({
           routeQuoteId: result.routeQuoteId,
           encodedPolyline: result.encodedPolyline,
+          speedReadingIntervals: result.speedReadingIntervals,
           standardFare: result.standardFareMmkt,
           plusFare: result.plusFareMmkt,
           distanceKm: result.distanceKm,
@@ -205,6 +235,12 @@ export default function BookTaxiScreen() {
     router,
   ]);
 
+  // ── Go back: clear stale route quote so re-entry fetches fresh data ──
+  const handleBack = useCallback(() => {
+    clearRouteQuote();
+    router.back();
+  }, [clearRouteQuote, router]);
+
   // ── Fare formatting ──
   const formatFare = (amount: number | null): string => {
     if (amount == null) return "—";
@@ -273,19 +309,20 @@ export default function BookTaxiScreen() {
           pinColor="red"
         />
 
-        {/* Route polyline */}
-        {routeCoords.length > 1 && (
+        {/* Route polyline – traffic-colored segments */}
+        {trafficSegments.map((seg) => (
           <Polyline
-            coordinates={routeCoords}
-            strokeColor="#0a9830"
-            strokeWidth={4}
+            key={seg.key}
+            coordinates={seg.coords}
+            strokeColor={seg.color}
+            strokeWidth={5}
           />
-        )}
+        ))}
       </MapView>
 
       {/* ── Back button ── */}
       <Pressable
-        onPress={() => router.back()}
+        onPress={handleBack}
         style={[
           styles.backButton,
           {
@@ -557,10 +594,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
 
-  // Back button
+  // Back button — zIndex ensures it sits above the full-screen MapView
   backButton: {
     position: "absolute",
     left: Spacing.md,
+    zIndex: 10,
     width: 40,
     height: 40,
     borderRadius: BorderRadius.full,
@@ -573,11 +611,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  // Bottom card
+  // Bottom card — zIndex ensures it sits above the full-screen MapView
   bottomCard: {
     position: "absolute",
     left: 0,
     right: 0,
+    zIndex: 5,
     paddingTop: Spacing.md,
     paddingHorizontal: Spacing.md,
     borderTopLeftRadius: BorderRadius.lg,

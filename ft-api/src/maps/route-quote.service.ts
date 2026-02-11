@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MapsService } from './maps.service.js';
+import { MapsService, type SpeedReadingInterval } from './maps.service.js';
 import { RidePricingService } from '../pricing/ride-pricing.service.js';
 import { PrismaService } from '../prisma.service.js';
 
@@ -23,6 +23,7 @@ export interface RouteQuoteResult {
   durationSeconds: number;
   durationMinutes: number;
   encodedPolyline: string;
+  speedReadingIntervals: SpeedReadingInterval[];
   standardFareMmkt: number;
   plusFareMmkt: number;
   currency: string;
@@ -85,6 +86,7 @@ export class RouteQuoteService {
       durationSeconds: route.durationSeconds,
       durationMinutes: route.durationMinutes,
       encodedPolyline: route.encodedPolyline,
+      speedReadingIntervals: route.speedReadingIntervals,
       standardFareMmkt: standardFare.totalFare,
       plusFareMmkt: plusFare.totalFare,
       currency: standardFare.currency,

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { SpeedReadingInterval } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,6 +43,7 @@ interface RideBookingState {
   // Route quote
   routeQuoteId: string | null;
   encodedPolyline: string | null;
+  speedReadingIntervals: SpeedReadingInterval[] | null;
   standardFare: number | null;
   plusFare: number | null;
   distanceKm: number | null;
@@ -68,12 +70,16 @@ interface RideBookingState {
   setRouteQuote: (data: {
     routeQuoteId: string;
     encodedPolyline: string;
+    speedReadingIntervals: SpeedReadingInterval[];
     standardFare: number;
     plusFare: number;
     distanceKm: number;
     durationMinutes: number;
     currency: string;
   }) => void;
+
+  // Clear only route quote data (used when going back from book-taxi)
+  clearRouteQuote: () => void;
 
   // Reset everything
   reset: () => void;
@@ -94,6 +100,7 @@ const INITIAL_STATE = {
   pickupPhotoUri: null as string | null,
   routeQuoteId: null as string | null,
   encodedPolyline: null as string | null,
+  speedReadingIntervals: null as SpeedReadingInterval[] | null,
   standardFare: null as number | null,
   plusFare: null as number | null,
   distanceKm: null as number | null,
@@ -164,11 +171,24 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
     set({
       routeQuoteId: data.routeQuoteId,
       encodedPolyline: data.encodedPolyline,
+      speedReadingIntervals: data.speedReadingIntervals,
       standardFare: data.standardFare,
       plusFare: data.plusFare,
       distanceKm: data.distanceKm,
       durationMinutes: data.durationMinutes,
       currency: data.currency,
+    });
+  },
+
+  clearRouteQuote() {
+    set({
+      routeQuoteId: null,
+      encodedPolyline: null,
+      speedReadingIntervals: null,
+      standardFare: null,
+      plusFare: null,
+      distanceKm: null,
+      durationMinutes: null,
     });
   },
 
