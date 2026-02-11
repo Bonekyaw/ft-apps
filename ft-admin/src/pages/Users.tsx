@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { authClient, useSession } from "@/lib/auth-client";
 import { ROLE_LABELS } from "@/lib/admin-permissions";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ function usePermissions(role: string | undefined) {
 }
 
 export default function UsersPage() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const currentRole = (session?.user?.role as string | undefined) ?? "";
   const permissions = usePermissions(currentRole);
@@ -91,7 +93,7 @@ export default function UsersPage() {
       setUsers(appUsers);
       setTotal(appUsers.length);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load users");
+      setError(e instanceof Error ? e.message : t("users.failedToLoad"));
     } finally {
       setLoading(false);
     }
@@ -139,18 +141,18 @@ export default function UsersPage() {
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+          <h1 className="mb-4 text-2xl font-bold tracking-tight">{t("users.title")}</h1>
           <p className="text-muted-foreground">
-            Manage riders and drivers. All admins can view this page.
+            {t("users.description")}
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Riders &amp; drivers</CardTitle>
+          <CardTitle>{t("users.cardTitle")}</CardTitle>
           <CardDescription>
-            {total} user{total !== 1 ? "s" : ""} (User and Driver roles only)
+            {t("users.cardDescription", { count: total })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -158,15 +160,15 @@ export default function UsersPage() {
             <p className="mb-4 text-sm text-destructive">{error}</p>
           )}
           {loading ? (
-            <p className="text-muted-foreground text-sm">Loading...</p>
+            <p className="text-muted-foreground text-sm">{t("common.loading")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t("common.name")}</TableHead>
+                  <TableHead>{t("common.email")}</TableHead>
+                  <TableHead>{t("common.role")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
                   <TableHead className="w-[70px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -182,9 +184,9 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       {user.banned ? (
-                        <Badge variant="destructive">Banned</Badge>
+                        <Badge variant="destructive">{t("common.banned")}</Badge>
                       ) : (
-                        <Badge variant="secondary">Active</Badge>
+                        <Badge variant="secondary">{t("common.active")}</Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -199,7 +201,7 @@ export default function UsersPage() {
                             <DropdownMenuItem
                               onClick={() => setBanTarget({ user, ban: !user.banned })}
                             >
-                              {user.banned ? "Unban user" : "Ban user"}
+                              {user.banned ? t("users.unbanUser") : t("users.banUser")}
                             </DropdownMenuItem>
                           )}
                           {permissions.canRevokeSession && (
@@ -207,7 +209,7 @@ export default function UsersPage() {
                               onClick={() => setRevokeTarget(user)}
                             >
                               <LogOutIcon className="mr-2 size-4" />
-                              Revoke all sessions
+                              {t("users.revokeSessions")}
                             </DropdownMenuItem>
                           )}
                           {permissions.canDelete && (
@@ -216,7 +218,7 @@ export default function UsersPage() {
                               onClick={() => setDeleteTarget(user)}
                             >
                               <Trash2Icon className="mr-2 size-4" />
-                              Delete user
+                              {t("users.deleteUser")}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -234,21 +236,21 @@ export default function UsersPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {banTarget?.ban ? "Ban user?" : "Unban user?"}
+              {banTarget?.ban ? t("users.banTitle") : t("users.unbanTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {banTarget?.ban
-                ? `${banTarget.user.name} will be unable to sign in. You can unban them later.`
-                : `${banTarget?.user.name} will be able to sign in again.`}
+                ? t("users.banMessage", { name: banTarget.user.name })
+                : t("users.unbanMessage", { name: banTarget?.user.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => banTarget && handleBan(banTarget.user.id, banTarget.ban)}
               className={banTarget?.ban ? "bg-destructive text-destructive-foreground" : ""}
             >
-              {banTarget?.ban ? "Ban" : "Unban"}
+              {banTarget?.ban ? t("users.ban") : t("users.unban")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -257,18 +259,18 @@ export default function UsersPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogTitle>{t("users.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget?.name} will be permanently removed. This cannot be undone.
+              {t("users.deleteMessage", { name: deleteTarget?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteTarget && handleDelete(deleteTarget.id)}
               className="bg-destructive text-destructive-foreground"
             >
-              Delete
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -277,17 +279,17 @@ export default function UsersPage() {
       <AlertDialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke all sessions?</AlertDialogTitle>
+            <AlertDialogTitle>{t("users.revokeTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {revokeTarget?.name} will be signed out from all devices.
+              {t("users.revokeMessage", { name: revokeTarget?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => revokeTarget && handleRevokeSessions(revokeTarget.id)}
             >
-              Revoke
+              {t("common.revoke")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

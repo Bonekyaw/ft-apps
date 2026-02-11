@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -76,8 +77,8 @@ function parseDateString(s: string): Date {
 // ── Constants ──
 
 const VEHICLE_TYPES = [
-  { value: "STANDARD", label: "Standard" },
-  { value: "PLUS", label: "Plus (+20%)" },
+  { value: "STANDARD", label: "pricing.configSheet.standard" },
+  { value: "PLUS", label: "pricing.configSheet.plus" },
 ];
 
 // ── Form types ──
@@ -111,6 +112,7 @@ const DEFAULT_FORM: ConfigForm = {
 // ── Component ──
 
 export default function PricingPage() {
+  const { t } = useTranslation();
   const [configs, setConfigs] = useState<PricingConfigDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -147,7 +149,7 @@ export default function PricingPage() {
       setConfigs(await getPricingConfig());
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Failed to load pricing configs"
+        e instanceof Error ? e.message : t("pricing.errors.loadConfigs")
       );
     } finally {
       setLoading(false);
@@ -160,7 +162,7 @@ export default function PricingPage() {
       setSurcharges(await getTownshipSurcharges());
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Failed to load township surcharges"
+        e instanceof Error ? e.message : t("pricing.errors.loadSurcharges")
       );
     } finally {
       setSurchargeLoading(false);
@@ -211,7 +213,7 @@ export default function PricingPage() {
       setSheetOpen(false);
       loadConfigs();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save config");
+      setError(e instanceof Error ? e.message : t("pricing.errors.saveConfig"));
     } finally {
       setSaving(false);
     }
@@ -243,7 +245,7 @@ export default function PricingPage() {
       loadSurcharges();
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Failed to save township surcharge"
+        e instanceof Error ? e.message : t("pricing.errors.saveSurcharge")
       );
     } finally {
       setSavingSurcharge(false);
@@ -265,7 +267,7 @@ export default function PricingPage() {
       loadSurcharges();
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Failed to delete township surcharge"
+        e instanceof Error ? e.message : t("pricing.errors.deleteSurcharge")
       );
     }
   }
@@ -365,10 +367,9 @@ export default function PricingPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Pricing Engine</h1>
+        <h1 className="mb-4 text-2xl font-bold tracking-tight">{t("pricing.title")}</h1>
         <p className="text-muted-foreground">
-          Configure fares, distance-based per-km rates, special day overrides,
-          and peak-hour surges per vehicle type.
+          {t("pricing.description")}
         </p>
       </div>
 
@@ -377,30 +378,23 @@ export default function PricingPage() {
       {/* Formula */}
       <Card>
         <CardHeader>
-          <CardTitle>Fare formula</CardTitle>
+          <CardTitle>{t("pricing.fareFormula.title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
           <p className="text-sm text-muted-foreground">
-            <strong>Total</strong> = Base Fare + Distance Fare + (Duration min
-            &times; Time Rate) + Booking Fee + Township Surcharge
+            {t("pricing.fareFormula.total")}
           </p>
           <p className="text-sm text-muted-foreground">
-            <strong>Distance Fare</strong>: Each km uses the per-km rate of the
-            distance band it falls into. If no bands are set, the default per-km
-            rate is used for the entire trip.
+            {t("pricing.fareFormula.distanceFare")}
           </p>
           <p className="text-sm text-muted-foreground">
-            <strong>Special Days</strong>: On weekends or selected holidays, the
-            special day per-km rate replaces distance bands entirely.
+            {t("pricing.fareFormula.specialDays")}
           </p>
           <p className="text-sm text-muted-foreground">
-            <strong>Township Surcharge</strong>: A fixed charge applied when a
-            ride enters or exits a designated township. If both pickup and
-            destination are in the same township, no charge applies.
+            {t("pricing.fareFormula.townshipSurcharge")}
           </p>
           <p className="text-sm text-muted-foreground">
-            Surge &amp; Plus premium are applied on top. Result is rounded to
-            the nearest 100 MMK.
+            {t("pricing.fareFormula.surgeNote")}
           </p>
         </CardContent>
       </Card>
@@ -408,33 +402,33 @@ export default function PricingPage() {
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Pricing configs</CardTitle>
+          <CardTitle>{t("pricing.configs.title")}</CardTitle>
           <CardDescription>
-            One config per vehicle type.
+            {t("pricing.configs.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button onClick={openAdd} className="mb-4">
             <PlusIcon className="mr-2 size-4" />
-            Add config
+            {t("pricing.configs.addButton")}
           </Button>
           {loading ? (
-            <p className="text-muted-foreground text-sm">Loading...</p>
+            <p className="text-muted-foreground text-sm">{t("common.loading")}</p>
           ) : configs.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              No pricing configs yet.
+              {t("pricing.configs.empty")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Base</TableHead>
-                  <TableHead>Per km</TableHead>
-                  <TableHead>Per min</TableHead>
-                  <TableHead>Bands</TableHead>
-                  <TableHead>Special days</TableHead>
-                  <TableHead>Surge</TableHead>
+                  <TableHead>{t("pricing.configs.type")}</TableHead>
+                  <TableHead>{t("pricing.configs.base")}</TableHead>
+                  <TableHead>{t("pricing.configs.perKm")}</TableHead>
+                  <TableHead>{t("pricing.configs.perMin")}</TableHead>
+                  <TableHead>{t("pricing.configs.bands")}</TableHead>
+                  <TableHead>{t("pricing.configs.specialDays")}</TableHead>
+                  <TableHead>{t("pricing.configs.surge")}</TableHead>
                   <TableHead className="w-[50px]" />
                 </TableRow>
               </TableHeader>
@@ -462,7 +456,7 @@ export default function PricingPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
                         {bands.length === 0
-                          ? "Default"
+                          ? t("pricing.configs.default")
                           : bands.map((b, i) => (
                               <span key={i} className="block">
                                 {b.minKm}&ndash;{b.maxKm ?? "∞"} km:{" "}
@@ -472,11 +466,11 @@ export default function PricingPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
                         {specials.length === 0
-                          ? "None"
+                          ? t("pricing.configs.none")
                           : specials.map((s, i) => (
                               <span key={i} className="block">
-                                {s.name || (s.isWeekend ? "Weekend" : "Holiday")}
-                                : {s.perKmRate}/km
+                                {s.name || (s.isWeekend ? t("pricing.configs.weekend") : t("pricing.configs.holiday"))}
+                                : {s.perKmRate}{t("pricing.configs.perKmSuffix")}
                               </span>
                             ))}
                       </TableCell>
@@ -502,30 +496,28 @@ export default function PricingPage() {
       {/* ── Township surcharge section ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Township Fixed Charges</CardTitle>
+          <CardTitle>{t("pricing.township.title")}</CardTitle>
           <CardDescription>
-            Define a fixed charge for specific townships. The charge is applied
-            whenever a ride enters or exits the township. If both pickup and
-            destination are within the same township, no charge applies.
+            {t("pricing.township.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button onClick={openAddSurcharge} className="mb-4">
             <PlusIcon className="mr-2 size-4" />
-            Add township
+            {t("pricing.township.addButton")}
           </Button>
           {surchargeLoading ? (
-            <p className="text-muted-foreground text-sm">Loading...</p>
+            <p className="text-muted-foreground text-sm">{t("common.loading")}</p>
           ) : surcharges.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              No township surcharge rules yet.
+              {t("pricing.township.empty")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Township</TableHead>
-                  <TableHead>Fixed Charge (MMK)</TableHead>
+                  <TableHead>{t("pricing.township.townshipCol")}</TableHead>
+                  <TableHead>{t("pricing.township.fixedChargeCol")}</TableHead>
                   <TableHead className="w-[80px]" />
                 </TableRow>
               </TableHeader>
@@ -570,17 +562,17 @@ export default function PricingPage() {
           <SheetHeader className="px-0 pb-4">
             <SheetTitle>
               {editingSurcharge
-                ? "Edit township surcharge"
-                : "Add township surcharge"}
+                ? t("pricing.township.editTitle")
+                : t("pricing.township.addTitle")}
             </SheetTitle>
           </SheetHeader>
 
           <div className="flex flex-1 flex-col gap-5 px-0">
             <div className="space-y-1.5">
-              <Label>Township name</Label>
+              <Label>{t("pricing.township.townshipLabel")}</Label>
               <Input
                 className="h-9"
-                placeholder="e.g. Thanlyin"
+                placeholder={t("pricing.township.townshipPlaceholder")}
                 value={surchargeForm.township}
                 onChange={(e) =>
                   setSurchargeForm((s) => ({
@@ -592,7 +584,7 @@ export default function PricingPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Fixed charge (MMK)</Label>
+              <Label>{t("pricing.township.fixedChargeLabel")}</Label>
               <Input
                 type="number"
                 min={0}
@@ -608,9 +600,7 @@ export default function PricingPage() {
               />
             </div>
             <p className="text-muted-foreground text-xs">
-              This charge is added to the fare when a ride starts in this
-              township and ends elsewhere, or starts elsewhere and ends here. No
-              charge for intra-township trips.
+              {t("pricing.township.helpText")}
             </p>
           </div>
 
@@ -620,7 +610,7 @@ export default function PricingPage() {
               className="flex-1"
               onClick={() => setSurchargeSheetOpen(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleSaveSurcharge}
@@ -628,10 +618,10 @@ export default function PricingPage() {
               className="flex-1"
             >
               {savingSurcharge
-                ? "Saving..."
+                ? t("common.saving")
                 : editingSurcharge
-                  ? "Update"
-                  : "Create"}
+                  ? t("common.update")
+                  : t("common.create")}
             </Button>
           </div>
         </SheetContent>
@@ -641,16 +631,15 @@ export default function PricingPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete surcharge rule?</AlertDialogTitle>
+            <AlertDialogTitle>{t("pricing.township.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove this township surcharge rule. The
-              in-memory cache will be updated immediately.
+              {t("pricing.township.deleteDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteSurcharge}>
-              Delete
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -661,14 +650,14 @@ export default function PricingPage() {
         <SheetContent className="flex flex-col overflow-y-auto px-6 sm:max-w-lg">
           <SheetHeader className="px-0 pb-4">
             <SheetTitle>
-              {editingConfig ? "Edit pricing config" : "Add pricing config"}
+              {editingConfig ? t("pricing.configSheet.editTitle") : t("pricing.configSheet.addTitle")}
             </SheetTitle>
           </SheetHeader>
 
           <div className="flex flex-1 flex-col gap-6 px-0">
             {/* Vehicle type */}
             <div className="space-y-1.5">
-              <Label>Vehicle type</Label>
+              <Label>{t("pricing.configSheet.vehicleTypeLabel")}</Label>
               <Select
                 value={form.vehicleType}
                 onValueChange={(v) =>
@@ -680,9 +669,9 @@ export default function PricingPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {VEHICLE_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
+                  {VEHICLE_TYPES.map((vt) => (
+                    <SelectItem key={vt.value} value={vt.value}>
+                      {t(vt.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -690,38 +679,38 @@ export default function PricingPage() {
             </div>
 
             {/* ── Fare settings ── */}
-            <Section title="Fare settings">
+            <Section title={t("pricing.configSheet.fareSettings")}>
               <div className="grid gap-3 sm:grid-cols-2">
                 <NumField
-                  label="Base fare (MMK)"
+                  label={t("pricing.configSheet.baseFare")}
                   value={form.baseFare}
                   onChange={(v) =>
                     setForm((s) => ({ ...s, baseFare: v }))
                   }
                 />
                 <NumField
-                  label="Default per km rate (MMK)"
+                  label={t("pricing.configSheet.defaultPerKmRate")}
                   value={form.perKmRate}
                   onChange={(v) =>
                     setForm((s) => ({ ...s, perKmRate: v }))
                   }
                 />
                 <NumField
-                  label="Time rate (MMK / min)"
+                  label={t("pricing.configSheet.timeRate")}
                   value={form.timeRate}
                   onChange={(v) =>
                     setForm((s) => ({ ...s, timeRate: v }))
                   }
                 />
                 <NumField
-                  label="Booking fee (MMK)"
+                  label={t("pricing.configSheet.bookingFee")}
                   value={form.bookingFee}
                   onChange={(v) =>
                     setForm((s) => ({ ...s, bookingFee: v }))
                   }
                 />
                 <NumField
-                  label="Surge multiplier"
+                  label={t("pricing.configSheet.surgeMultiplier")}
                   value={form.surgeMultiplier}
                   onChange={(v) =>
                     setForm((s) => ({ ...s, surgeMultiplier: v }))
@@ -733,14 +722,14 @@ export default function PricingPage() {
             </Section>
 
             {/* ── Distance bands ── */}
-            <Section title="Distance-based per-km rate">
+            <Section title={t("pricing.configSheet.distanceBands")}>
               <p className="text-muted-foreground text-xs">
-                Each km of the trip uses the rate of the band it falls into. Leave empty to use the default per-km rate for all distances.
+                {t("pricing.configSheet.distanceBandsDesc")}
               </p>
               {form.distanceBands.map((band, idx) => (
                 <div key={idx} className="flex items-end gap-2">
                   <div className="min-w-0 flex-1 space-y-1">
-                    <Label className="text-xs">From (km)</Label>
+                    <Label className="text-xs">{t("pricing.configSheet.fromKm")}</Label>
                     <Input
                       type="number"
                       min={0}
@@ -752,13 +741,13 @@ export default function PricingPage() {
                     />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <Label className="text-xs">To (km)</Label>
+                    <Label className="text-xs">{t("pricing.configSheet.toKm")}</Label>
                     <Input
                       type="number"
                       min={0}
                       className="h-8"
                       value={band.maxKm ?? ""}
-                      placeholder="No limit"
+                      placeholder={t("pricing.configSheet.toPlaceholder")}
                       onChange={(e) =>
                         updateBand(
                           idx,
@@ -769,7 +758,7 @@ export default function PricingPage() {
                     />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <Label className="text-xs">Rate (MMK)</Label>
+                    <Label className="text-xs">{t("pricing.configSheet.rateLabel")}</Label>
                     <Input
                       type="number"
                       min={0}
@@ -796,16 +785,14 @@ export default function PricingPage() {
               ))}
               <Button variant="outline" size="sm" onClick={addBand}>
                 <PlusIcon className="mr-1 size-3.5" />
-                Add distance band
+                {t("pricing.configSheet.addBand")}
               </Button>
             </Section>
 
             {/* ── Special day rates ── */}
-            <Section title="Special day per-km rates">
+            <Section title={t("pricing.configSheet.specialDaysTitle")}>
               <p className="text-muted-foreground text-xs">
-                On matching days the special per-km rate replaces distance bands
-                entirely. Enable &quot;Weekend&quot; and/or pick holiday dates from the
-                calendar.
+                {t("pricing.configSheet.specialDaysDesc")}
               </p>
               {form.specialDayRates.map((sd, idx) => (
                 <div
@@ -814,7 +801,7 @@ export default function PricingPage() {
                 >
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">
-                      Rule {idx + 1}
+                      {t("pricing.configSheet.ruleLabel")} {idx + 1}
                     </Label>
                     <Button
                       variant="ghost"
@@ -828,10 +815,10 @@ export default function PricingPage() {
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
-                      <Label className="text-xs">Name</Label>
+                      <Label className="text-xs">{t("pricing.configSheet.nameLabel")}</Label>
                       <Input
                         className="h-8"
-                        placeholder="e.g. Weekend, Thingyan"
+                        placeholder={t("pricing.configSheet.namePlaceholder")}
                         value={sd.name}
                         onChange={(e) =>
                           updateSpecialDay(idx, { name: e.target.value })
@@ -839,7 +826,7 @@ export default function PricingPage() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Per km rate (MMK)</Label>
+                      <Label className="text-xs">{t("pricing.configSheet.perKmRateLabel")}</Label>
                       <Input
                         type="number"
                         min={0}
@@ -865,15 +852,15 @@ export default function PricingPage() {
                         })
                       }
                     />
-                    <span className="text-sm">Apply on weekends (Sat &amp; Sun)</span>
+                    <span className="text-sm">{t("pricing.configSheet.weekendCheckbox")}</span>
                   </label>
 
                   <div className="space-y-2">
                     <Label className="text-xs">
-                      Holiday dates{" "}
+                      {t("pricing.configSheet.holidayDatesLabel")}{" "}
                       {sd.holidayDates.length > 0 && (
                         <span className="text-muted-foreground">
-                          ({sd.holidayDates.length} selected)
+                          ({sd.holidayDates.length} {t("pricing.configSheet.selectedCount")})
                         </span>
                       )}
                     </Label>
@@ -892,19 +879,19 @@ export default function PricingPage() {
               ))}
               <Button variant="outline" size="sm" onClick={addSpecialDay}>
                 <PlusIcon className="mr-1 size-3.5" />
-                Add special day rule
+                {t("pricing.configSheet.addSpecialDay")}
               </Button>
             </Section>
 
             {/* ── Peak-hour time rules ── */}
-            <Section title="Peak-hour surge rules">
+            <Section title={t("pricing.configSheet.timeRulesTitle")}>
               <p className="text-muted-foreground text-xs">
-                Time windows where a higher surge multiplier applies.
+                {t("pricing.configSheet.timeRulesDesc")}
               </p>
               {form.timeRules.map((rule, idx) => (
                 <div key={idx} className="flex items-end gap-2">
                   <div className="min-w-0 flex-1 space-y-1">
-                    <Label className="text-xs">Start hour</Label>
+                    <Label className="text-xs">{t("pricing.configSheet.startHour")}</Label>
                     <Input
                       type="number"
                       min={0}
@@ -921,7 +908,7 @@ export default function PricingPage() {
                     />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <Label className="text-xs">End hour</Label>
+                    <Label className="text-xs">{t("pricing.configSheet.endHour")}</Label>
                     <Input
                       type="number"
                       min={0}
@@ -938,7 +925,7 @@ export default function PricingPage() {
                     />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <Label className="text-xs">Multiplier</Label>
+                    <Label className="text-xs">{t("pricing.configSheet.multiplierLabel")}</Label>
                     <Input
                       type="number"
                       min={1}
@@ -966,7 +953,7 @@ export default function PricingPage() {
               ))}
               <Button variant="outline" size="sm" onClick={addTimeRule}>
                 <PlusIcon className="mr-1 size-3.5" />
-                Add time rule
+                {t("pricing.configSheet.addTimeRule")}
               </Button>
             </Section>
           </div>
@@ -978,14 +965,14 @@ export default function PricingPage() {
               className="flex-1"
               onClick={() => setSheetOpen(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleSave}
               disabled={saving}
               className="flex-1"
             >
-              {saving ? "Saving..." : editingConfig ? "Update" : "Create"}
+              {saving ? t("common.saving") : editingConfig ? t("common.update") : t("common.create")}
             </Button>
           </div>
         </SheetContent>

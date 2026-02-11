@@ -161,4 +161,9 @@
   html {
     @apply font-sans;
   }
+
+  /* Myanmar script needs extra vertical breathing room */
+  html[lang="my"] * {
+    line-height: 1.6em;
+  }
 }

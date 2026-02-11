@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { authClient } from "@/lib/auth-client";
 import { ROLE_LABELS } from "@/lib/admin-permissions";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ export function CreateUserDialog({
   onOpenChange,
   onSuccess,
 }: CreateUserDialogProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -73,7 +75,7 @@ export function CreateUserDialog({
         role: role as "ADMIN" | "MANAGER" | "OPERATION" | "SUPERADMIN",
       });
       if (err) {
-        setError(err.message ?? "Failed to create user");
+        setError(err.message ?? t("createUser.failedToCreate"));
         return;
       }
       setName("");
@@ -83,7 +85,7 @@ export function CreateUserDialog({
       onOpenChange(false);
       onSuccess();
     } catch {
-      setError("Something went wrong.");
+      setError(t("createUser.somethingWentWrong"));
     } finally {
       setPending(false);
     }
@@ -97,11 +99,10 @@ export function CreateUserDialog({
       >
         <SheetHeader className="space-y-1.5 pb-2">
           <SheetTitle className="text-xl font-semibold tracking-tight">
-            Create user
+            {t("createUser.title")}
           </SheetTitle>
           <SheetDescription className="text-muted-foreground text-sm leading-relaxed">
-            Add a new user to the platform. They can sign in with email OTP or
-            the password you set.
+            {t("createUser.description")}
           </SheetDescription>
         </SheetHeader>
 
@@ -125,7 +126,7 @@ export function CreateUserDialog({
 
             <section className="space-y-4">
               <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                Account details
+                {t("createUser.accountDetails")}
               </h3>
               <FieldGroup className="gap-4">
                 <Field className="gap-2">
@@ -134,7 +135,7 @@ export function CreateUserDialog({
                     className="text-muted-foreground flex items-center gap-2 text-sm font-medium"
                   >
                     <UserIcon className="size-3.5" />
-                    Name
+                    {t("createUser.nameLabel")}
                   </FieldLabel>
                   <Input
                     id="create-name"
@@ -142,7 +143,7 @@ export function CreateUserDialog({
                     onChange={(e) => setName(e.target.value)}
                     required
                     disabled={pending}
-                    placeholder="Full name"
+                    placeholder={t("createUser.namePlaceholder")}
                     className="h-9"
                   />
                 </Field>
@@ -152,7 +153,7 @@ export function CreateUserDialog({
                     className="text-muted-foreground flex items-center gap-2 text-sm font-medium"
                   >
                     <MailIcon className="size-3.5" />
-                    Email
+                    {t("createUser.emailLabel")}
                   </FieldLabel>
                   <Input
                     id="create-email"
@@ -161,7 +162,7 @@ export function CreateUserDialog({
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     disabled={pending}
-                    placeholder="user@example.com"
+                    placeholder={t("createUser.emailPlaceholder")}
                     className="h-9"
                   />
                 </Field>
@@ -171,7 +172,7 @@ export function CreateUserDialog({
                     className="text-muted-foreground flex items-center gap-2 text-sm font-medium"
                   >
                     <LockIcon className="size-3.5" />
-                    Password
+                    {t("createUser.passwordLabel")}
                   </FieldLabel>
                   <Input
                     id="create-password"
@@ -181,11 +182,11 @@ export function CreateUserDialog({
                     required
                     minLength={8}
                     disabled={pending}
-                    placeholder="••••••••"
+                    placeholder={t("createUser.passwordPlaceholder")}
                     className="h-9"
                   />
                   <p className="text-muted-foreground text-xs">
-                    At least 8 characters
+                    {t("createUser.passwordHint")}
                   </p>
                 </Field>
               </FieldGroup>
@@ -195,12 +196,12 @@ export function CreateUserDialog({
 
             <section className="space-y-4">
               <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                Role
+                {t("createUser.roleSection")}
               </h3>
               <Field className="gap-2">
                 <FieldLabel className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
                   <ShieldIcon className="size-3.5" />
-                  Assign role
+                  {t("createUser.assignRole")}
                 </FieldLabel>
                 <Select
                   value={role}
@@ -208,11 +209,11 @@ export function CreateUserDialog({
                   disabled={pending}
                 >
                   <SelectTrigger className="h-9 w-full">
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder={t("createUser.selectRole")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectLabel>App roles</SelectLabel>
+                      <SelectLabel>{t("createUser.appRoles")}</SelectLabel>
                       {(
                         CREATE_USER_ROLES.filter(
                           (r) =>
@@ -226,7 +227,7 @@ export function CreateUserDialog({
                     </SelectGroup>
                     <SelectSeparator />
                     <SelectGroup>
-                      <SelectLabel>Admin roles</SelectLabel>
+                      <SelectLabel>{t("createUser.adminRoles")}</SelectLabel>
                       {ADMIN_ROLES.map((r) => (
                         <SelectItem key={r} value={r}>
                           {ROLE_LABELS[r] ?? r}
@@ -249,10 +250,10 @@ export function CreateUserDialog({
               disabled={pending}
               className="min-w-24"
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={pending} className="min-w-28">
-              {pending ? "Creating…" : "Create user"}
+              {pending ? t("createUser.creating") : t("createUser.createUser")}
             </Button>
           </SheetFooter>
         </form>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { useTranslation, Trans } from "react-i18next";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
 import { authClient, isAdminRole } from "@/lib/auth-client";
 
 export function OTPForm(props: React.ComponentProps<typeof Card>) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [value, setValue] = useState("");
@@ -34,7 +36,7 @@ export function OTPForm(props: React.ComponentProps<typeof Card>) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email) {
-      setError("Missing email. Please start from the login page.");
+      setError(t("otp.missingEmail"));
       return;
     }
     setError(null);
@@ -45,21 +47,21 @@ export function OTPForm(props: React.ComponentProps<typeof Card>) {
         otp: value,
       });
       if (err) {
-        setError(err.message ?? "Invalid or expired code");
+        setError(err.message ?? t("otp.invalidCode"));
         return;
       }
       // Only allow admin users into the dashboard (session user may include role from DB)
       const user = data?.user as { role?: string } | undefined;
       if (!isAdminRole(user?.role)) {
         await authClient.signOut();
-        setError("Only administrators can access this dashboard.");
+        setError(t("otp.adminOnly"));
         return;
       }
       // wait 2 seconds
       await new Promise((resolve) => setTimeout(resolve, 2000));
       navigate("/", { replace: true });
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("common.somethingWentWrong"));
     } finally {
       setPending(false);
     }
@@ -70,11 +72,11 @@ export function OTPForm(props: React.ComponentProps<typeof Card>) {
       <Card {...props}>
         <CardContent className="pt-6">
           <p className="text-muted-foreground text-sm">
-            No email provided. Please{" "}
+            {t("otp.noEmail")}{" "}
             <a href="/login" className="underline">
-              log in
+              {t("otp.noEmailLink")}
             </a>{" "}
-            first.
+            {t("otp.noEmailSuffix")}
           </p>
         </CardContent>
       </Card>
@@ -84,9 +86,9 @@ export function OTPForm(props: React.ComponentProps<typeof Card>) {
   return (
     <Card {...props}>
       <CardHeader className="text-center">
-        <CardTitle className="text-xl">Enter verification code</CardTitle>
+        <CardTitle className="text-xl">{t("otp.title")}</CardTitle>
         <CardDescription>
-          We sent a 6-digit code to <strong>{email}</strong>
+          <Trans i18nKey="otp.description" values={{ email }} components={{ strong: <strong /> }} />
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -94,7 +96,7 @@ export function OTPForm(props: React.ComponentProps<typeof Card>) {
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="otp" className="sr-only">
-                Verification code
+                {t("otp.label")}
               </FieldLabel>
               <InputOTP
                 maxLength={6}
@@ -131,7 +133,7 @@ export function OTPForm(props: React.ComponentProps<typeof Card>) {
                 </InputOTPGroup>
               </InputOTP>
               <FieldDescription className="text-center">
-                Enter the 6-digit code sent to your email.
+                {t("otp.hint")}
               </FieldDescription>
             </Field>
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -140,11 +142,11 @@ export function OTPForm(props: React.ComponentProps<typeof Card>) {
               form="otp-form"
               disabled={pending || value.length !== 6}
             >
-              {pending ? "Signing in..." : "Sign in"}
+              {pending ? t("otp.signingIn") : t("otp.signIn")}
             </Button>
             <FieldDescription className="text-center">
               <a href="/login" className="underline">
-                Use a different email
+                {t("otp.useDifferentEmail")}
               </a>
             </FieldDescription>
           </FieldGroup>

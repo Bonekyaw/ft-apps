@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { authClient, useSession } from "@/lib/auth-client";
 import { ROLE_LABELS } from "@/lib/admin-permissions";
 import { Button } from "@/components/ui/button";
@@ -89,6 +90,7 @@ function usePermissions(role: string | undefined) {
 }
 
 export default function AdminUsersPage() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const currentRole = (session?.user?.role as string | undefined) ?? "";
   const permissions = usePermissions(currentRole);
@@ -124,7 +126,7 @@ export default function AdminUsersPage() {
       setUsers(adminUsers);
       setTotal(adminUsers.length);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load users");
+      setError(e instanceof Error ? e.message : t("users.failedToLoad"));
     } finally {
       setLoading(false);
     }
@@ -202,24 +204,24 @@ export default function AdminUsersPage() {
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Admin Management</h1>
+          <h1 className="mb-4 text-2xl font-bold tracking-tight">{t("adminUsers.title")}</h1>
           <p className="text-muted-foreground">
-            Manage admin users (Admin, Manager, Operation, Superadmin). Only superadmins can access this page.
+            {t("adminUsers.description")}
           </p>
         </div>
         {permissions.canCreate && (
           <Button onClick={() => setCreateOpen(true)}>
             <UserPlusIcon className="mr-2 size-4" />
-            Create admin user
+            {t("adminUsers.createButton")}
           </Button>
         )}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Admin users</CardTitle>
+          <CardTitle>{t("adminUsers.cardTitle")}</CardTitle>
           <CardDescription>
-            {total} user{total !== 1 ? "s" : ""} (Admin, Manager, Operation, Superadmin)
+            {t("adminUsers.cardDescription", { count: total })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -227,15 +229,15 @@ export default function AdminUsersPage() {
             <p className="mb-4 text-sm text-destructive">{error}</p>
           )}
           {loading ? (
-            <p className="text-muted-foreground text-sm">Loading...</p>
+            <p className="text-muted-foreground text-sm">{t("common.loading")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t("common.name")}</TableHead>
+                  <TableHead>{t("common.email")}</TableHead>
+                  <TableHead>{t("common.role")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
                   <TableHead className="w-[70px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -264,9 +266,9 @@ export default function AdminUsersPage() {
                     </TableCell>
                     <TableCell>
                       {user.banned ? (
-                        <Badge variant="destructive">Banned</Badge>
+                        <Badge variant="destructive">{t("common.banned")}</Badge>
                       ) : (
-                        <Badge variant="secondary">Active</Badge>
+                        <Badge variant="secondary">{t("common.active")}</Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -281,13 +283,13 @@ export default function AdminUsersPage() {
                             <DropdownMenuItem
                               onClick={() => setBanTarget({ user, ban: !user.banned })}
                             >
-                              {user.banned ? "Unban user" : "Ban user"}
+                              {user.banned ? t("users.unbanUser") : t("users.banUser")}
                             </DropdownMenuItem>
                           )}
                           {permissions.canRevokeSession && (
                             <DropdownMenuItem onClick={() => setRevokeTarget(user)}>
                               <LogOutIcon className="mr-2 size-4" />
-                              Revoke all sessions
+                              {t("users.revokeSessions")}
                             </DropdownMenuItem>
                           )}
                           {permissions.canSetPassword && (
@@ -298,7 +300,7 @@ export default function AdminUsersPage() {
                               }}
                             >
                               <KeyIcon className="mr-2 size-4" />
-                              Set password
+                              {t("adminUsers.setPasswordButton")}
                             </DropdownMenuItem>
                           )}
                           {permissions.canDelete && (
@@ -307,7 +309,7 @@ export default function AdminUsersPage() {
                               onClick={() => setDeleteTarget(user)}
                             >
                               <Trash2Icon className="mr-2 size-4" />
-                              Delete user
+                              {t("users.deleteUser")}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -330,21 +332,26 @@ export default function AdminUsersPage() {
       <AlertDialog open={!!setRoleTarget} onOpenChange={() => setSetRoleTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Change role?</AlertDialogTitle>
+            <AlertDialogTitle>{t("adminUsers.changeRoleTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Change {setRoleTarget?.user.name}&apos;s role to{" "}
-              <strong>{setRoleTarget ? ROLE_LABELS[setRoleTarget.newRole] ?? setRoleTarget.newRole : ""}</strong>?
-              This will update their permissions immediately.
+              <Trans
+                i18nKey="adminUsers.changeRoleMessage"
+                values={{
+                  name: setRoleTarget?.user.name,
+                  role: setRoleTarget ? ROLE_LABELS[setRoleTarget.newRole] ?? setRoleTarget.newRole : "",
+                }}
+                components={{ strong: <strong /> }}
+              />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() =>
                 setRoleTarget && handleSetRole(setRoleTarget.user.id, setRoleTarget.newRole)
               }
             >
-              Confirm
+              {t("common.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -354,21 +361,21 @@ export default function AdminUsersPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {banTarget?.ban ? "Ban user?" : "Unban user?"}
+              {banTarget?.ban ? t("users.banTitle") : t("users.unbanTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {banTarget?.ban
-                ? `${banTarget.user.name} will be unable to sign in. You can unban them later.`
-                : `${banTarget?.user.name} will be able to sign in again.`}
+                ? t("users.banMessage", { name: banTarget.user.name })
+                : t("users.unbanMessage", { name: banTarget?.user.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => banTarget && handleBan(banTarget.user.id, banTarget.ban)}
               className={banTarget?.ban ? "bg-destructive text-destructive-foreground" : ""}
             >
-              {banTarget?.ban ? "Ban" : "Unban"}
+              {banTarget?.ban ? t("users.ban") : t("users.unban")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -377,18 +384,18 @@ export default function AdminUsersPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogTitle>{t("users.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget?.name} will be permanently removed. This cannot be undone.
+              {t("users.deleteMessage", { name: deleteTarget?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteTarget && handleDelete(deleteTarget.id)}
               className="bg-destructive text-destructive-foreground"
             >
-              Delete
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -397,17 +404,17 @@ export default function AdminUsersPage() {
       <AlertDialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke all sessions?</AlertDialogTitle>
+            <AlertDialogTitle>{t("users.revokeTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {revokeTarget?.name} will be signed out from all devices.
+              {t("users.revokeMessage", { name: revokeTarget?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => revokeTarget && handleRevokeSessions(revokeTarget.id)}
             >
-              Revoke
+              {t("common.revoke")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -419,11 +426,10 @@ export default function AdminUsersPage() {
       >
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>Set password</AlertDialogTitle>
+            <AlertDialogTitle>{t("adminUsers.setPasswordTitle")}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <span>
-                Set a new password for {setPasswordTarget?.name}. They can use it to sign in with
-                email/password.
+                {t("adminUsers.setPasswordDescription", { name: setPasswordTarget?.name })}
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -438,7 +444,7 @@ export default function AdminUsersPage() {
           >
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="admin-new-password">New password</FieldLabel>
+                <FieldLabel htmlFor="admin-new-password">{t("adminUsers.newPasswordLabel")}</FieldLabel>
                 <Input
                   id="admin-new-password"
                   type="password"
@@ -452,13 +458,13 @@ export default function AdminUsersPage() {
             </FieldGroup>
             <AlertDialogFooter>
               <AlertDialogCancel type="button" onClick={() => setSetPasswordTarget(null)}>
-                Cancel
+                {t("common.cancel")}
               </AlertDialogCancel>
               <Button
                 type="submit"
                 disabled={setPasswordPending || newPassword.trim().length < 8}
               >
-                {setPasswordPending ? "Saving..." : "Set password"}
+                {setPasswordPending ? t("adminUsers.setPasswordSaving") : t("adminUsers.setPasswordButton")}
               </Button>
             </AlertDialogFooter>
           </form>

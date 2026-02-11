@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -88,6 +89,7 @@ function ImageUpload({
   onChange: (url: string) => void;
   purpose: "banner" | "thumbnail";
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +103,7 @@ function ImageUpload({
       const url = await uploadImage(file, purpose);
       onChange(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(err instanceof Error ? err.message : t("content.errors.uploadFailed"));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -134,13 +136,13 @@ function ImageUpload({
           className="flex h-36 w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-muted-foreground/25 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:bg-muted/30"
         >
           {uploading ? (
-            <span className="text-sm">Uploading & optimizing...</span>
+            <span className="text-sm">{t("content.upload.uploading")}</span>
           ) : (
             <>
               <UploadIcon className="size-6" />
-              <span className="text-sm">Click to upload image</span>
+              <span className="text-sm">{t("content.upload.clickToUpload")}</span>
               <span className="text-xs">
-                JPEG, PNG, WebP, GIF — max 10 MB
+                {t("content.upload.formats")}
               </span>
             </>
           )}
@@ -218,6 +220,7 @@ const DEFAULT_ANNOUNCEMENT: AnnouncementForm = {
 // =============================================
 
 export default function ContentPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("banners");
 
   // ── Banners state ──
@@ -251,11 +254,11 @@ export default function ContentPage() {
     try {
       setBanners(await getBanners());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load banners");
+      setError(e instanceof Error ? e.message : t("content.errors.loadBanners"));
     } finally {
       setBannersLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const loadAnnouncements = useCallback(async () => {
     setAnnouncementsLoading(true);
@@ -263,12 +266,12 @@ export default function ContentPage() {
       setAnnouncements(await getAnnouncements());
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Failed to load announcements",
+        e instanceof Error ? e.message : t("content.errors.loadAnnouncements"),
       );
     } finally {
       setAnnouncementsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadBanners();
@@ -299,7 +302,7 @@ export default function ContentPage() {
 
   async function handleSaveBanner() {
     if (!bannerForm.imageUrl) {
-      setError("Banner image is required");
+      setError(t("content.errors.bannerImageRequired"));
       return;
     }
     setBannerSaving(true);
@@ -322,7 +325,7 @@ export default function ContentPage() {
       setBannerSheetOpen(false);
       loadBanners();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save banner");
+      setError(e instanceof Error ? e.message : t("content.errors.saveBanner"));
     } finally {
       setBannerSaving(false);
     }
@@ -334,7 +337,7 @@ export default function ContentPage() {
       await deleteBanner(deletingBannerId);
       loadBanners();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete banner");
+      setError(e instanceof Error ? e.message : t("content.errors.deleteBanner"));
     } finally {
       setDeletingBannerId(null);
     }
@@ -367,7 +370,7 @@ export default function ContentPage() {
 
   async function handleSaveAnnouncement() {
     if (!announcementForm.title || !announcementForm.body) {
-      setError("Title and body are required");
+      setError(t("content.errors.titleBodyRequired"));
       return;
     }
     setAnnouncementSaving(true);
@@ -394,7 +397,7 @@ export default function ContentPage() {
       loadAnnouncements();
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Failed to save announcement",
+        e instanceof Error ? e.message : t("content.errors.saveAnnouncement"),
       );
     } finally {
       setAnnouncementSaving(false);
@@ -408,7 +411,7 @@ export default function ContentPage() {
       loadAnnouncements();
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Failed to delete announcement",
+        e instanceof Error ? e.message : t("content.errors.deleteAnnouncement"),
       );
     } finally {
       setDeletingAnnouncementId(null);
@@ -420,12 +423,11 @@ export default function ContentPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Content Management
+        <h1 className="mb-4 text-2xl font-bold tracking-tight">
+          {t("content.title")}
         </h1>
         <p className="text-muted-foreground">
-          Manage promotional banners and announcements displayed in the mobile
-          app.
+          {t("content.description")}
         </p>
       </div>
 
@@ -447,11 +449,11 @@ export default function ContentPage() {
         <TabsList>
           <TabsTrigger value="banners" className="gap-1.5">
             <ImageIcon className="size-4" />
-            Banners
+            {t("content.tabs.banners")}
           </TabsTrigger>
           <TabsTrigger value="announcements" className="gap-1.5">
             <MegaphoneIcon className="size-4" />
-            Announcements
+            {t("content.tabs.announcements")}
           </TabsTrigger>
         </TabsList>
 
@@ -459,33 +461,32 @@ export default function ContentPage() {
         <TabsContent value="banners">
           <Card>
             <CardHeader>
-              <CardTitle>Banners</CardTitle>
+              <CardTitle>{t("content.banners.title")}</CardTitle>
               <CardDescription>
-                Promotional banners shown in the home screen carousel. Lower
-                priority = shown first.
+                {t("content.banners.description")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button onClick={openAddBanner} className="mb-4">
                 <PlusIcon className="mr-2 size-4" />
-                Add banner
+                {t("content.banners.addButton")}
               </Button>
 
               {bannersLoading ? (
-                <p className="text-muted-foreground text-sm">Loading...</p>
+                <p className="text-muted-foreground text-sm">{t("common.loading")}</p>
               ) : banners.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  No banners yet. Create your first banner above.
+                  {t("content.banners.empty")}
                 </p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[80px]">Image</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Schedule</TableHead>
+                      <TableHead className="w-[80px]">{t("content.banners.image")}</TableHead>
+                      <TableHead>{t("content.banners.titleCol")}</TableHead>
+                      <TableHead>{t("content.banners.priority")}</TableHead>
+                      <TableHead>{t("common.status")}</TableHead>
+                      <TableHead>{t("content.banners.schedule")}</TableHead>
                       <TableHead className="w-[80px]" />
                     </TableRow>
                   </TableHeader>
@@ -495,14 +496,14 @@ export default function ContentPage() {
                         <TableCell>
                           <img
                             src={b.imageUrl}
-                            alt={b.title ?? "Banner"}
+                            alt={b.title ?? t("content.banners.title")}
                             className="h-10 w-16 rounded object-cover"
                           />
                         </TableCell>
                         <TableCell className="font-medium">
                           {b.title || (
                             <span className="text-muted-foreground italic">
-                              Untitled
+                              {t("content.banners.untitled")}
                             </span>
                           )}
                         </TableCell>
@@ -511,13 +512,13 @@ export default function ContentPage() {
                           <Badge
                             variant={b.isActive ? "default" : "secondary"}
                           >
-                            {b.isActive ? "Active" : "Inactive"}
+                            {b.isActive ? t("common.active") : t("content.banners.inactive")}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">
                           {b.startsAt || b.endsAt
                             ? `${fmtDate(b.startsAt)} → ${fmtDate(b.endsAt)}`
-                            : "Always"}
+                            : t("content.banners.always")}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
@@ -550,34 +551,34 @@ export default function ContentPage() {
         <TabsContent value="announcements">
           <Card>
             <CardHeader>
-              <CardTitle>Announcements</CardTitle>
+              <CardTitle>{t("content.announcements.title")}</CardTitle>
               <CardDescription>
-                Admin announcements displayed as post cards on the home screen.
+                {t("content.announcements.description")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button onClick={openAddAnnouncement} className="mb-4">
                 <PlusIcon className="mr-2 size-4" />
-                Add announcement
+                {t("content.announcements.addButton")}
               </Button>
 
               {announcementsLoading ? (
-                <p className="text-muted-foreground text-sm">Loading...</p>
+                <p className="text-muted-foreground text-sm">{t("common.loading")}</p>
               ) : announcements.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  No announcements yet. Create your first one above.
+                  {t("content.announcements.empty")}
                 </p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[60px]">Image</TableHead>
-                      <TableHead>Title</TableHead>
+                      <TableHead className="w-[60px]">{t("content.announcements.image")}</TableHead>
+                      <TableHead>{t("content.announcements.titleCol")}</TableHead>
                       <TableHead className="hidden md:table-cell">
-                        Body
+                        {t("content.announcements.body")}
                       </TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>{t("content.announcements.priority")}</TableHead>
+                      <TableHead>{t("common.status")}</TableHead>
                       <TableHead className="w-[80px]" />
                     </TableRow>
                   </TableHeader>
@@ -608,7 +609,7 @@ export default function ContentPage() {
                           <Badge
                             variant={a.isActive ? "default" : "secondary"}
                           >
-                            {a.isActive ? "Active" : "Inactive"}
+                            {a.isActive ? t("common.active") : t("content.banners.inactive")}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -646,7 +647,7 @@ export default function ContentPage() {
         <SheetContent className="flex flex-col overflow-y-auto px-6 sm:max-w-lg">
           <SheetHeader className="px-0 pb-4">
             <SheetTitle>
-              {editingBanner ? "Edit banner" : "Add banner"}
+              {editingBanner ? t("content.banners.editTitle") : t("content.banners.addTitle")}
             </SheetTitle>
           </SheetHeader>
 
@@ -654,7 +655,7 @@ export default function ContentPage() {
             {/* Image */}
             <div className="space-y-1.5">
               <Label>
-                Banner image <span className="text-destructive">*</span>
+                {t("content.banners.imageLabel")} <span className="text-destructive">*</span>
               </Label>
               <ImageUpload
                 value={bannerForm.imageUrl}
@@ -664,38 +665,38 @@ export default function ContentPage() {
                 purpose="banner"
               />
               <p className="text-xs text-muted-foreground">
-                Optimized to 1200 x 480 WebP on upload.
+                {t("content.banners.imageHint")}
               </p>
             </div>
 
             {/* Title */}
             <div className="space-y-1.5">
-              <Label>Title (optional)</Label>
+              <Label>{t("content.banners.titleLabel")}</Label>
               <Input
                 value={bannerForm.title}
                 onChange={(e) =>
                   setBannerForm((s) => ({ ...s, title: e.target.value }))
                 }
-                placeholder="e.g. Welcome Offer"
+                placeholder={t("content.banners.titlePlaceholder")}
               />
             </div>
 
             {/* Link */}
             <div className="space-y-1.5">
-              <Label>Link URL (optional)</Label>
+              <Label>{t("content.banners.linkLabel")}</Label>
               <Input
                 value={bannerForm.linkUrl}
                 onChange={(e) =>
                   setBannerForm((s) => ({ ...s, linkUrl: e.target.value }))
                 }
-                placeholder="https://..."
+                placeholder={t("content.banners.linkPlaceholder")}
               />
             </div>
 
             {/* Priority + Active */}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Priority</Label>
+                <Label>{t("content.banners.priorityLabel")}</Label>
                 <Input
                   type="number"
                   min={0}
@@ -708,7 +709,7 @@ export default function ContentPage() {
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Lower = shown first
+                  {t("content.banners.priorityHint")}
                 </p>
               </div>
               <div className="flex items-center gap-2 pt-6">
@@ -725,14 +726,14 @@ export default function ContentPage() {
                     }))
                   }
                 />
-                <Label htmlFor="banner-active">Active</Label>
+                <Label htmlFor="banner-active">{t("content.banners.activeLabel")}</Label>
               </div>
             </div>
 
             {/* Schedule */}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Starts at</Label>
+                <Label>{t("content.banners.startsAt")}</Label>
                 <Input
                   type="date"
                   value={bannerForm.startsAt}
@@ -745,7 +746,7 @@ export default function ContentPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Ends at</Label>
+                <Label>{t("content.banners.endsAt")}</Label>
                 <Input
                   type="date"
                   value={bannerForm.endsAt}
@@ -763,7 +764,7 @@ export default function ContentPage() {
               className="flex-1"
               onClick={() => setBannerSheetOpen(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleSaveBanner}
@@ -771,10 +772,10 @@ export default function ContentPage() {
               className="flex-1"
             >
               {bannerSaving
-                ? "Saving..."
+                ? t("common.saving")
                 : editingBanner
-                  ? "Update"
-                  : "Create"}
+                  ? t("common.update")
+                  : t("common.create")}
             </Button>
           </div>
         </SheetContent>
@@ -789,8 +790,8 @@ export default function ContentPage() {
           <SheetHeader className="px-0 pb-4">
             <SheetTitle>
               {editingAnnouncement
-                ? "Edit announcement"
-                : "Add announcement"}
+                ? t("content.announcements.editTitle")
+                : t("content.announcements.addTitle")}
             </SheetTitle>
           </SheetHeader>
 
@@ -798,11 +799,11 @@ export default function ContentPage() {
             {/* English title + body */}
             <fieldset className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <legend className="text-muted-foreground px-1 text-xs font-medium uppercase tracking-wider">
-                English
+                {t("content.announcements.englishLabel")}
               </legend>
               <div className="space-y-1.5">
                 <Label>
-                  Title <span className="text-destructive">*</span>
+                  {t("content.announcements.englishTitleLabel")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   value={announcementForm.title}
@@ -812,12 +813,12 @@ export default function ContentPage() {
                       title: e.target.value,
                     }))
                   }
-                  placeholder="Announcement title (English)"
+                  placeholder={t("content.announcements.englishTitlePlaceholder")}
                 />
               </div>
               <div className="space-y-1.5">
                 <Label>
-                  Body <span className="text-destructive">*</span>
+                  {t("content.announcements.englishBodyLabel")} <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   value={announcementForm.body}
@@ -827,7 +828,7 @@ export default function ContentPage() {
                       body: e.target.value,
                     }))
                   }
-                  placeholder="Write the announcement content (English)..."
+                  placeholder={t("content.announcements.englishBodyPlaceholder")}
                   rows={3}
                 />
               </div>
@@ -836,10 +837,10 @@ export default function ContentPage() {
             {/* Myanmar title + body */}
             <fieldset className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <legend className="text-muted-foreground px-1 text-xs font-medium uppercase tracking-wider">
-                Myanmar (မြန်မာ)
+                {t("content.announcements.myanmarLabel")}
               </legend>
               <div className="space-y-1.5">
-                <Label>ခေါင်းစဉ် / Title</Label>
+                <Label>{t("content.announcements.myanmarTitleLabel")}</Label>
                 <Input
                   value={announcementForm.titleMy}
                   onChange={(e) =>
@@ -848,11 +849,11 @@ export default function ContentPage() {
                       titleMy: e.target.value,
                     }))
                   }
-                  placeholder="ကြေညာချက် ခေါင်းစဉ် (မြန်မာ)"
+                  placeholder={t("content.announcements.myanmarTitlePlaceholder")}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>အကြောင်းအရာ / Body</Label>
+                <Label>{t("content.announcements.myanmarBodyLabel")}</Label>
                 <Textarea
                   value={announcementForm.bodyMy}
                   onChange={(e) =>
@@ -861,7 +862,7 @@ export default function ContentPage() {
                       bodyMy: e.target.value,
                     }))
                   }
-                  placeholder="ကြေညာချက် အကြောင်းအရာ (မြန်မာ)..."
+                  placeholder={t("content.announcements.myanmarBodyPlaceholder")}
                   rows={3}
                 />
               </div>
@@ -869,7 +870,7 @@ export default function ContentPage() {
 
             {/* Thumbnail */}
             <div className="space-y-1.5">
-              <Label>Thumbnail (optional)</Label>
+              <Label>{t("content.announcements.thumbnailLabel")}</Label>
               <ImageUpload
                 value={announcementForm.imageUrl}
                 onChange={(url) =>
@@ -878,13 +879,13 @@ export default function ContentPage() {
                 purpose="thumbnail"
               />
               <p className="text-xs text-muted-foreground">
-                Optimized to 400 x 400 WebP on upload.
+                {t("content.announcements.thumbnailHint")}
               </p>
             </div>
 
             {/* Link */}
             <div className="space-y-1.5">
-              <Label>Link URL (optional)</Label>
+              <Label>{t("content.announcements.linkLabel")}</Label>
               <Input
                 value={announcementForm.linkUrl}
                 onChange={(e) =>
@@ -893,14 +894,14 @@ export default function ContentPage() {
                     linkUrl: e.target.value,
                   }))
                 }
-                placeholder="https://..."
+                placeholder={t("content.announcements.linkPlaceholder")}
               />
             </div>
 
             {/* Priority + Active */}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Priority</Label>
+                <Label>{t("content.announcements.priorityLabel")}</Label>
                 <Input
                   type="number"
                   min={0}
@@ -927,14 +928,14 @@ export default function ContentPage() {
                     }))
                   }
                 />
-                <Label htmlFor="ann-active">Active</Label>
+                <Label htmlFor="ann-active">{t("content.announcements.activeLabel")}</Label>
               </div>
             </div>
 
             {/* Schedule */}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Starts at</Label>
+                <Label>{t("content.announcements.startsAt")}</Label>
                 <Input
                   type="date"
                   value={announcementForm.startsAt}
@@ -947,7 +948,7 @@ export default function ContentPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Ends at</Label>
+                <Label>{t("content.announcements.endsAt")}</Label>
                 <Input
                   type="date"
                   value={announcementForm.endsAt}
@@ -968,7 +969,7 @@ export default function ContentPage() {
               className="flex-1"
               onClick={() => setAnnouncementSheetOpen(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleSaveAnnouncement}
@@ -980,10 +981,10 @@ export default function ContentPage() {
               className="flex-1"
             >
               {announcementSaving
-                ? "Saving..."
+                ? t("common.saving")
                 : editingAnnouncement
-                  ? "Update"
-                  : "Create"}
+                  ? t("common.update")
+                  : t("common.create")}
             </Button>
           </div>
         </SheetContent>
@@ -996,19 +997,18 @@ export default function ContentPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete banner?</AlertDialogTitle>
+            <AlertDialogTitle>{t("content.banners.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the banner and its image. This action
-              cannot be undone.
+              {t("content.banners.deleteDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteBanner}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1021,19 +1021,18 @@ export default function ContentPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete announcement?</AlertDialogTitle>
+            <AlertDialogTitle>{t("content.announcements.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the announcement. This action cannot
-              be undone.
+              {t("content.announcements.deleteDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAnnouncement}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,7 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -36,12 +38,12 @@ export function LoginForm({
         type: "sign-in",
       });
       if (err) {
-        setError(err.message ?? "Failed to send code");
+        setError(err.message ?? t("login.failedToSendCode"));
         return;
       }
       navigate(`/verify-otp?email=${encodeURIComponent(email.trim())}`);
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("common.somethingWentWrong"));
     } finally {
       setPending(false);
     }
@@ -51,20 +53,20 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle>Admin login</CardTitle>
+          <CardTitle>{t("login.title")}</CardTitle>
           <CardDescription>
-            Enter your admin email to receive a one-time sign-in code.
+            {t("login.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit}>
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <FieldLabel htmlFor="email">{t("login.emailLabel")}</FieldLabel>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder={t("login.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -76,7 +78,7 @@ export function LoginForm({
               )}
               <Field>
                 <Button type="submit" disabled={pending}>
-                  {pending ? "Sending code..." : "Send sign-in code"}
+                  {pending ? t("login.sendingCode") : t("login.sendCode")}
                 </Button>
               </Field>
             </FieldGroup>

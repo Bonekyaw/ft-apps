@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/sidebar"
 import { EllipsisVerticalIcon, LogOutIcon } from "lucide-react"
 import { useNavigate } from "react-router"
+import { useTranslation } from "react-i18next"
 import { signOut } from "@/lib/auth-client"
 
 export function NavUser({
@@ -32,6 +33,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   async function handleLogout() {
     await signOut()
@@ -87,7 +89,7 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOutIcon className="size-4" />
-              Log out
+              {t("common.logOut")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
