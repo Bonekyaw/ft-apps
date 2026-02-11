@@ -132,6 +132,17 @@
     "slide4Title": "Easy Payments",
     "slide4Description": "Pay with cash or card. Transparent pricing with no hidden fees."
   },
+  "home": {
+    "greeting": "Hello, %{name}",
+    "greetingDefault": "Hello there",
+    "searchPlaceholder": "Where are you going?",
+    "bookRide": "Family Taxi",
+    "bookRideSubtitle": "Book a ride now",
+    "announcements": "Announcements",
+    "noAnnouncements": "No announcements right now",
+    "readMore": "Read more",
+    "promotions": "Promotions"
+  },
   "explore": {
     "searchPlaceholder": "Search for a place or address"
   },

@@ -8,14 +8,17 @@ export interface RouteQuoteInput {
   pickupLng: number;
   dropoffLat: number;
   dropoffLng: number;
+  vehicleType?: string;
 }
 
 export interface RouteQuoteResult {
   distanceMeters: number;
+  distanceKm: number;
   durationSeconds: number;
+  durationMinutes: number;
   encodedPolyline: string;
   standardFareMmkt: number;
-  taxiPlusFareMmkt: number;
+  plusFareMmkt: number;
   currency: string;
   routeQuoteId: string;
 }
@@ -36,10 +39,18 @@ export class RouteQuoteService {
       { lat: dropoffLat, lng: dropoffLng },
     );
 
-    const fare = await this.pricing.calculateFare(
-      route.distanceMeters,
-      route.durationSeconds,
-      new Date(),
+    // Calculate Standard fare
+    const standardFare = await this.pricing.calculateFare(
+      route.distanceKm,
+      route.durationMinutes,
+      'STANDARD',
+    );
+
+    // Calculate Plus fare
+    const plusFare = await this.pricing.calculateFare(
+      route.distanceKm,
+      route.durationMinutes,
+      'PLUS',
     );
 
     const quote = await this.prisma.routeQuote.create({
@@ -51,19 +62,21 @@ export class RouteQuoteService {
         distanceMeters: route.distanceMeters,
         durationSeconds: route.durationSeconds,
         encodedPolyline: route.encodedPolyline,
-        standardFareMmkt: fare.standardMmkt,
-        taxiPlusFareMmkt: fare.taxiPlusMmkt,
-        currency: fare.currency,
+        standardFareMmkt: standardFare.totalFare,
+        taxiPlusFareMmkt: plusFare.totalFare,
+        currency: standardFare.currency,
       },
     });
 
     return {
       distanceMeters: route.distanceMeters,
+      distanceKm: route.distanceKm,
       durationSeconds: route.durationSeconds,
+      durationMinutes: route.durationMinutes,
       encodedPolyline: route.encodedPolyline,
-      standardFareMmkt: fare.standardMmkt,
-      taxiPlusFareMmkt: fare.taxiPlusMmkt,
-      currency: fare.currency,
+      standardFareMmkt: standardFare.totalFare,
+      plusFareMmkt: plusFare.totalFare,
+      currency: standardFare.currency,
       routeQuoteId: quote.id,
     };
   }

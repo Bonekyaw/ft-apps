@@ -16,8 +16,8 @@ export class UsersController {
 
   @Get('public')
   @AllowAnonymous()
-  async getPublic(@I18n() i18n: I18nContext) {
-    const message = await i18n.t('common.publicRoute');
+  getPublic(@I18n() i18n: I18nContext) {
+    const message = i18n.t('common.publicRoute');
     return { message };
   }
 

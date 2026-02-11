@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, HttpStatus, Logger, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Logger,
+  Post,
+} from '@nestjs/common';
 import type { AutocompleteRequestBody } from './maps.service.js';
 import { MapsService } from './maps.service.js';
 import {

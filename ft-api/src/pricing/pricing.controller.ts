@@ -1,28 +1,22 @@
 import {
   Body,
   Controller,
-  Delete,
   ForbiddenException,
   Get,
-  Param,
-  Post,
   Put,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { RidePricingService } from './ride-pricing.service.js';
 import { PrismaService } from '../prisma.service.js';
+import { VehicleType } from '../generated/prisma/enums.js';
 
 const ADMIN_ROLES = ['ADMIN', 'MANAGER', 'OPERATION', 'SUPERADMIN'];
 
 function isAdmin(role: unknown): boolean {
-  return (
-    typeof role === 'string' &&
-    ADMIN_ROLES.includes(role.toUpperCase())
-  );
+  return typeof role === 'string' && ADMIN_ROLES.includes(role.toUpperCase());
 }
 
-/** Require admin role for pricing endpoints. */
 function assertAdmin(session: UserSession | null): void {
   if (!session?.user) {
     throw new UnauthorizedException('Unauthorized');
@@ -39,194 +33,92 @@ export class PricingController {
     private readonly prisma: PrismaService,
   ) {}
 
-  @Get('defaults')
-  async getDefaults(@Session() session: UserSession | null) {
+  @Get('config')
+  async getConfig(@Session() session: UserSession | null) {
     assertAdmin(session);
-    const row = await this.prisma.pricingDefaults.findFirst();
-    if (!row) {
-      return {
-        baseFareMinMmkt: 1500,
-        baseFareMaxMmkt: 2000,
-        initialKmForBase: 2,
-        perKmRateDefaultMmkt: 1000,
-        taxiPlusMultiplier: 1.2,
-        currency: 'MMK',
-      };
-    }
-    return {
-      id: row.id,
-      baseFareMinMmkt: Number(row.baseFareMinMmkt),
-      baseFareMaxMmkt: Number(row.baseFareMaxMmkt),
-      initialKmForBase: Number(row.initialKmForBase),
-      perKmRateDefaultMmkt: Number(row.perKmRateDefaultMmkt),
-      taxiPlusMultiplier: Number(row.taxiPlusMultiplier),
-      currency: row.currency,
-      updatedAt: row.updatedAt,
-    };
-  }
-
-  @Put('defaults')
-  async putDefaults(
-    @Session() session: UserSession | null,
-    @Body()
-    body: {
-      baseFareMinMmkt?: number;
-      baseFareMaxMmkt?: number;
-      initialKmForBase?: number;
-      perKmRateDefaultMmkt?: number;
-      taxiPlusMultiplier?: number;
-      currency?: string;
-    },
-  ) {
-    assertAdmin(session);
-    const existing = await this.prisma.pricingDefaults.findFirst();
-    const data = {
-      baseFareMinMmkt: body.baseFareMinMmkt ?? existing?.baseFareMinMmkt ?? 1500,
-      baseFareMaxMmkt: body.baseFareMaxMmkt ?? existing?.baseFareMaxMmkt ?? 2000,
-      initialKmForBase: body.initialKmForBase ?? existing?.initialKmForBase ?? 2,
-      perKmRateDefaultMmkt:
-        body.perKmRateDefaultMmkt ?? existing?.perKmRateDefaultMmkt ?? 1000,
-      taxiPlusMultiplier:
-        body.taxiPlusMultiplier ?? existing?.taxiPlusMultiplier ?? 1.2,
-      currency: body.currency ?? existing?.currency ?? 'MMK',
-    };
-
-    if (existing) {
-      await this.prisma.pricingDefaults.update({
-        where: { id: existing.id },
-        data,
-      });
-      return { ...data, id: existing.id };
-    }
-
-    const created = await this.prisma.pricingDefaults.create({ data });
-    return {
-      id: created.id,
-      ...data,
-      updatedAt: created.updatedAt,
-    };
-  }
-
-  @Get('rules')
-  async getRules(@Session() session: UserSession | null) {
-    assertAdmin(session);
-    const rules = await this.prisma.pricingRule.findMany({
-      orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }],
+    const rows = await this.prisma.pricingConfig.findMany({
+      orderBy: { vehicleType: 'asc' },
     });
-    return rules.map((r) => ({
+    return rows.map((r) => ({
       id: r.id,
-      name: r.name,
-      active: r.active,
-      priority: r.priority,
-      ruleType: r.ruleType,
-      minDistanceKm: r.minDistanceKm != null ? Number(r.minDistanceKm) : null,
-      maxDistanceKm: r.maxDistanceKm != null ? Number(r.maxDistanceKm) : null,
-      perKmRateMmkt: r.perKmRateMmkt != null ? Number(r.perKmRateMmkt) : null,
-      startHour: r.startHour,
-      endHour: r.endHour,
-      timeSurgeMultiplier:
-        r.timeSurgeMultiplier != null ? Number(r.timeSurgeMultiplier) : null,
-      dayOfWeek: r.dayOfWeek,
-      isWeekend: r.isWeekend,
-      isHoliday: r.isHoliday,
-      holidayDate: r.holidayDate,
-      specialDayMultiplier:
-        r.specialDayMultiplier != null ? Number(r.specialDayMultiplier) : null,
-      createdAt: r.createdAt,
+      vehicleType: r.vehicleType,
+      baseFare: Number(r.baseFare),
+      perKmRate: Number(r.perKmRate),
+      timeRate: Number(r.timeRate),
+      bookingFee: Number(r.bookingFee),
+      surgeMultiplier: Number(r.surgeMultiplier),
+      currency: r.currency,
+      timeRules: r.timeRules ?? [],
+      distanceBands: r.distanceBands ?? [],
+      specialDayRates: r.specialDayRates ?? [],
       updatedAt: r.updatedAt,
     }));
   }
 
-  @Post('rules')
-  async createRule(
+  @Put('config')
+  async putConfig(
     @Session() session: UserSession | null,
     @Body()
     body: {
-      name: string;
-      active?: boolean;
-      priority?: number;
-      ruleType: string;
-      minDistanceKm?: number;
-      maxDistanceKm?: number;
-      perKmRateMmkt?: number;
-      startHour?: number;
-      endHour?: number;
-      timeSurgeMultiplier?: number;
-      dayOfWeek?: number;
-      isWeekend?: boolean;
-      isHoliday?: boolean;
-      holidayDate?: string;
-      specialDayMultiplier?: number;
+      vehicleType?: VehicleType;
+      baseFare?: number;
+      perKmRate?: number;
+      timeRate?: number;
+      bookingFee?: number;
+      surgeMultiplier?: number;
+      currency?: string;
+      timeRules?: unknown;
+      distanceBands?: unknown;
+      specialDayRates?: unknown;
     },
   ) {
     assertAdmin(session);
-    const rule = await this.prisma.pricingRule.create({
-      data: {
-        name: body.name,
-        active: body.active ?? true,
-        priority: body.priority ?? 0,
-        ruleType: body.ruleType as 'DISTANCE_BAND' | 'TIME_OF_DAY' | 'SPECIAL_DAY',
-        minDistanceKm: body.minDistanceKm,
-        maxDistanceKm: body.maxDistanceKm,
-        perKmRateMmkt: body.perKmRateMmkt,
-        startHour: body.startHour,
-        endHour: body.endHour,
-        timeSurgeMultiplier: body.timeSurgeMultiplier,
-        dayOfWeek: body.dayOfWeek,
-        isWeekend: body.isWeekend,
-        isHoliday: body.isHoliday,
-        holidayDate: body.holidayDate ? new Date(body.holidayDate) : null,
-        specialDayMultiplier: body.specialDayMultiplier,
+    const { vehicleType = 'STANDARD', ...rest } = body;
+
+    const data = {
+      baseFare: rest.baseFare ?? 1500,
+      perKmRate: rest.perKmRate ?? 1000,
+      timeRate: rest.timeRate ?? 0,
+      bookingFee: rest.bookingFee ?? 0,
+      surgeMultiplier: rest.surgeMultiplier ?? 1.0,
+      currency: rest.currency ?? 'MMK',
+      timeRules: rest.timeRules ?? [],
+      distanceBands: rest.distanceBands ?? [],
+      specialDayRates: rest.specialDayRates ?? [],
+    };
+
+    const config = await this.prisma.pricingConfig.upsert({
+      where: { vehicleType: vehicleType },
+      update: {
+        baseFare: rest.baseFare,
+        perKmRate: rest.perKmRate,
+        timeRate: rest.timeRate,
+        bookingFee: rest.bookingFee,
+        surgeMultiplier: rest.surgeMultiplier,
+        currency: rest.currency,
+        timeRules: rest.timeRules ?? undefined,
+        distanceBands: rest.distanceBands ?? undefined,
+        specialDayRates: rest.specialDayRates ?? undefined,
+      },
+      create: {
+        vehicleType,
+        ...data,
       },
     });
-    return { id: rule.id, ...body };
-  }
 
-  @Put('rules/:id')
-  async updateRule(
-    @Session() session: UserSession | null,
-    @Param('id') id: string,
-    @Body()
-    body: Partial<{
-      name: string;
-      active: boolean;
-      priority: number;
-      ruleType: string;
-      minDistanceKm: number;
-      maxDistanceKm: number;
-      perKmRateMmkt: number;
-      startHour: number;
-      endHour: number;
-      timeSurgeMultiplier: number;
-      dayOfWeek: number;
-      isWeekend: boolean;
-      isHoliday: boolean;
-      holidayDate: string;
-      specialDayMultiplier: number;
-    }>,
-  ) {
-    assertAdmin(session);
-    const update: Record<string, unknown> = { ...body };
-    if (body.holidayDate != null) {
-      update.holidayDate = new Date(body.holidayDate);
-    }
-    if (body.ruleType != null) {
-      update.ruleType = body.ruleType;
-    }
-    await this.prisma.pricingRule.update({
-      where: { id },
-      data: update as never,
-    });
-    return { id, ...body };
-  }
-
-  @Delete('rules/:id')
-  async deleteRule(
-    @Session() session: UserSession | null,
-    @Param('id') id: string,
-  ) {
-    assertAdmin(session);
-    await this.prisma.pricingRule.delete({ where: { id } });
-    return { deleted: id };
+    return {
+      id: config.id,
+      vehicleType: config.vehicleType,
+      baseFare: Number(config.baseFare),
+      perKmRate: Number(config.perKmRate),
+      timeRate: Number(config.timeRate),
+      bookingFee: Number(config.bookingFee),
+      surgeMultiplier: Number(config.surgeMultiplier),
+      currency: config.currency,
+      timeRules: config.timeRules ?? [],
+      distanceBands: config.distanceBands ?? [],
+      specialDayRates: config.specialDayRates ?? [],
+      updatedAt: config.updatedAt,
+    };
   }
 }

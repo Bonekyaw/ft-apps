@@ -4,7 +4,8 @@ const BASE = import.meta.env.VITE_BETTER_AUTH_URL ?? "http://localhost:3000";
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   const res = await authClient.getSession();
-  const token = (res as { data?: { session?: { token?: string } } })?.data?.session?.token;
+  const token = (res as { data?: { session?: { token?: string } } })?.data
+    ?.session?.token;
   if (!token) {
     throw new Error("Not authenticated");
   }
@@ -14,19 +15,46 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   };
 }
 
-export interface PricingDefaultsDto {
+// ── Shared types ──
+
+export interface DistanceBandDto {
+  minKm: number;
+  maxKm: number | null; // null = no upper limit
+  perKmRate: number;
+}
+
+export interface SpecialDayRateDto {
+  name: string;
+  perKmRate: number;
+  isWeekend: boolean;
+  holidayDates: string[]; // "YYYY-MM-DD"
+}
+
+export interface TimeRuleDto {
+  start: number;
+  end: number;
+  multiplier: number;
+}
+
+export interface PricingConfigDto {
   id?: string;
-  baseFareMinMmkt: number;
-  baseFareMaxMmkt: number;
-  initialKmForBase: number;
-  perKmRateDefaultMmkt: number;
-  taxiPlusMultiplier: number;
+  vehicleType: string;
+  baseFare: number;
+  perKmRate: number;
+  timeRate: number;
+  bookingFee: number;
+  surgeMultiplier: number;
   currency: string;
+  timeRules?: TimeRuleDto[];
+  distanceBands?: DistanceBandDto[];
+  specialDayRates?: SpecialDayRateDto[];
   updatedAt?: string;
 }
 
-export async function getPricingDefaults(): Promise<PricingDefaultsDto> {
-  const res = await fetch(`${BASE}/pricing/defaults`, {
+// ── API calls ──
+
+export async function getPricingConfig(): Promise<PricingConfigDto[]> {
+  const res = await fetch(`${BASE}/pricing/config`, {
     headers: await getAuthHeaders(),
     credentials: "include",
   });
@@ -34,10 +62,10 @@ export async function getPricingDefaults(): Promise<PricingDefaultsDto> {
   return res.json();
 }
 
-export async function putPricingDefaults(
-  body: Partial<PricingDefaultsDto>
-): Promise<PricingDefaultsDto> {
-  const res = await fetch(`${BASE}/pricing/defaults`, {
+export async function putPricingConfig(
+  body: Partial<PricingConfigDto>
+): Promise<PricingConfigDto> {
+  const res = await fetch(`${BASE}/pricing/config`, {
     method: "PUT",
     headers: await getAuthHeaders(),
     credentials: "include",
@@ -45,87 +73,4 @@ export async function putPricingDefaults(
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
-}
-
-export interface PricingRuleDto {
-  id: string;
-  name: string;
-  active: boolean;
-  priority: number;
-  ruleType: "DISTANCE_BAND" | "TIME_OF_DAY" | "SPECIAL_DAY";
-  minDistanceKm?: number | null;
-  maxDistanceKm?: number | null;
-  perKmRateMmkt?: number | null;
-  startHour?: number | null;
-  endHour?: number | null;
-  timeSurgeMultiplier?: number | null;
-  dayOfWeek?: number | null;
-  isWeekend?: boolean | null;
-  isHoliday?: boolean | null;
-  holidayDate?: string | null;
-  specialDayMultiplier?: number | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export async function getPricingRules(): Promise<PricingRuleDto[]> {
-  const res = await fetch(`${BASE}/pricing/rules`, {
-    headers: await getAuthHeaders(),
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export interface CreatePricingRuleBody {
-  name: string;
-  active?: boolean;
-  priority?: number;
-  ruleType: "DISTANCE_BAND" | "TIME_OF_DAY" | "SPECIAL_DAY";
-  minDistanceKm?: number;
-  maxDistanceKm?: number;
-  perKmRateMmkt?: number;
-  startHour?: number;
-  endHour?: number;
-  timeSurgeMultiplier?: number;
-  dayOfWeek?: number;
-  isWeekend?: boolean;
-  isHoliday?: boolean;
-  holidayDate?: string;
-  specialDayMultiplier?: number;
-}
-
-export async function createPricingRule(
-  body: CreatePricingRuleBody
-): Promise<{ id: string } & CreatePricingRuleBody> {
-  const res = await fetch(`${BASE}/pricing/rules`, {
-    method: "POST",
-    headers: await getAuthHeaders(),
-    credentials: "include",
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function updatePricingRule(
-  id: string,
-  body: Partial<CreatePricingRuleBody>
-): Promise<void> {
-  const res = await fetch(`${BASE}/pricing/rules/${id}`, {
-    method: "PUT",
-    headers: await getAuthHeaders(),
-    credentials: "include",
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(await res.text());
-}
-
-export async function deletePricingRule(id: string): Promise<void> {
-  const res = await fetch(`${BASE}/pricing/rules/${id}`, {
-    method: "DELETE",
-    headers: await getAuthHeaders(),
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error(await res.text());
 }

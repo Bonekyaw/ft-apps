@@ -132,6 +132,17 @@
     "slide4Title": "ငွေပေးချေမှု လွယ်ကူပါ",
     "slide4Description": "ငွေသား သို့မဟုတ် ကတ်ဖြင့် ပေးနိုင်ပါသည်။ ကုန်ကျစရိတ် ပွင့်လင်းပြီး ထပ်ငွေ မရှိပါ။"
   },
+  "home": {
+    "greeting": "မင်္ဂလာပါ %{name}",
+    "greetingDefault": "မင်္ဂလာပါ",
+    "searchPlaceholder": "ဘယ်ကို သွားမလဲ?",
+    "bookRide": "Family Taxi",
+    "bookRideSubtitle": "ယာဉ်ခေါ်မည်",
+    "announcements": "ကြေညာချက်များ",
+    "noAnnouncements": "လောလောဆယ် ကြေညာချက်မရှိပါ",
+    "readMore": "ပိုဖတ်ရန်",
+    "promotions": "ပရိုမိုးရှင်းများ"
+  },
   "explore": {
     "searchPlaceholder": "နေရာ သို့မဟုတ် လိပ်စာ ရှာပါ"
   },

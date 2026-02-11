@@ -72,8 +72,14 @@ export class MapsService {
   /**
    * Compute route between two points using Google Routes API (Basic SKU).
    * Only requests duration, distanceMeters, and polyline.encodedPolyline.
+   * Returns distance in KM and duration in Minutes.
    */
-  async computeRoute(origin: { lat: number; lng: number }, destination: { lat: number; lng: number }): Promise<{
+  async computeRoute(
+    origin: { lat: number; lng: number },
+    destination: { lat: number; lng: number },
+  ): Promise<{
+    distanceKm: number;
+    durationMinutes: number;
     distanceMeters: number;
     durationSeconds: number;
     encodedPolyline: string;
@@ -124,7 +130,17 @@ export class MapsService {
       durationSeconds = match ? parseInt(match[1], 10) : 0;
     }
 
-    return { distanceMeters, durationSeconds, encodedPolyline };
+    // Convert to KM and Minutes
+    const distanceKm = distanceMeters / 1000;
+    const durationMinutes = durationSeconds / 60;
+
+    return {
+      distanceKm,
+      durationMinutes,
+      distanceMeters,
+      durationSeconds,
+      encodedPolyline,
+    };
   }
 
   /** Small radius for very nearby results (5 km). */

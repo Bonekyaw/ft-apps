@@ -41,6 +41,8 @@ enum DriverApprovalStatus {
 }
 
 enum VehicleType {
+  STANDARD
+  PLUS
   ECONOMY
   COMFORT
   PREMIUM
@@ -479,62 +481,6 @@ model SavedLocation {
 // PRICING CONFIGURATION
 // ============================================
 
-/** Global defaults for fare calculation (admin-editable). Single row. */
-model PricingDefaults {
-  id String @id @default(cuid())
-
-  baseFareMinMmkt       Decimal @db.Decimal(10, 2) // e.g. 1500 MMK
-  baseFareMaxMmkt       Decimal @db.Decimal(10, 2) // e.g. 2000 MMK
-  initialKmForBase      Decimal @db.Decimal(4, 2) // Distance (km) covered by base fare, e.g. 2
-  perKmRateDefaultMmkt  Decimal @db.Decimal(10, 2) // e.g. 1000 MMK/km
-  taxiPlusMultiplier    Decimal @db.Decimal(3, 2) // e.g. 1.2 (= +20%)
-
-  currency String  @default("MMK")
-  updatedAt DateTime @updatedAt
-
-  @@map("pricing_defaults")
-}
-
-/** Admin-controlled rules to override per-km rate or apply surge by distance, time, or special day. */
-model PricingRule {
-  id String @id @default(cuid())
-
-  name     String  // e.g. "Long distance discount", "Night surge"
-  active   Boolean @default(true)
-  priority Int     @default(0) // Lower = applied first
-
-  ruleType PricingRuleType
-
-  // DISTANCE_BAND: override per-km rate for distance range
-  minDistanceKm   Decimal? @db.Decimal(6, 2) // km
-  maxDistanceKm   Decimal? @db.Decimal(6, 2) // null = no upper limit
-  perKmRateMmkt   Decimal? @db.Decimal(10, 2)
-
-  // TIME_OF_DAY: surge multiplier by hour range (0-23)
-  startHour       Int?     // 0-23
-  endHour         Int?     // 0-23 (inclusive)
-  timeSurgeMultiplier Decimal? @db.Decimal(3, 2) // e.g. 1.2
-
-  // SPECIAL_DAY: weekend or holiday surge
-  dayOfWeek       Int?     // 0=Sunday .. 6=Saturday; null = any
-  isWeekend       Boolean? // true = Sat+Sun
-  isHoliday       Boolean? // use holidayDates or external list
-  holidayDate     DateTime? // specific date
-  specialDayMultiplier Decimal? @db.Decimal(3, 2) // e.g. 1.1
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([active, priority])
-  @@map("pricing_rule")
-}
-
-enum PricingRuleType {
-  DISTANCE_BAND  // Cheaper long-distance per-km
-  TIME_OF_DAY     // Morning/Day/Night surge
-  SPECIAL_DAY     // Weekend/Holiday surge
-}
-
 /** Stored result of a route computation + fare quote (for audit and optional ride linking). */
 model RouteQuote {
   id String @id @default(cuid())
@@ -561,21 +507,74 @@ model RouteQuote {
 
 model PricingConfig {
   id          String      @id @default(cuid())
-  vehicleType VehicleType @unique
+  
+  baseFare        Decimal @db.Decimal(10, 2) // Initial cost
+  perKmRate       Decimal @db.Decimal(10, 2) // Default rate per km
+  timeRate        Decimal @db.Decimal(10, 2) // Rate per minute
+  bookingFee      Decimal @default(0) @db.Decimal(10, 2)
+  surgeMultiplier Decimal @default(1.0) @db.Decimal(3, 2)
+  
+  currency        String      @default("MMK")
+  vehicleType     VehicleType @unique @default(STANDARD) // Standard vs Plus
+  
+  timeRules       Json?       // Peak-hour multipliers e.g. [{"start": 7, "end": 9, "multiplier": 1.5}]
 
-  baseFare      Decimal @db.Decimal(10, 2) // Base fare for pickup
-  perKmRate     Decimal @db.Decimal(10, 2) // Rate per kilometer
-  perMinuteRate Decimal @db.Decimal(10, 2) // Rate per minute
-  minimumFare   Decimal @db.Decimal(10, 2) // Minimum fare regardless of distance
-  bookingFee    Decimal @default(0) @db.Decimal(10, 2) // Fixed booking fee
+  // Distance-based per-km rate bands (segmented).
+  // Each km of the trip uses the rate of the band it falls into.
+  // e.g. [{"minKm": 0, "maxKm": 5, "perKmRate": 1000}, {"minKm": 5, "maxKm": null, "perKmRate": 800}]
+  distanceBands   Json?
 
-  currency String  @default("USD")
-  isActive Boolean @default(true)
+  // Special day per-km rate overrides (weekends, holidays).
+  // On a matching day, this per-km rate replaces the default AND distance bands.
+  // e.g. [{"name": "Weekend", "perKmRate": 1200, "isWeekend": true, "holidayDates": []},
+  //        {"name": "Thingyan", "perKmRate": 1500, "isWeekend": false, "holidayDates": ["2026-04-13","2026-04-16"]}]
+  specialDayRates Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("pricing_config")
+}
+
+// ============================================
+// BANNERS & ANNOUNCEMENTS
+// ============================================
+
+model Banner {
+  id       String  @id @default(cuid())
+  title    String?
+  imageUrl String  // URL or asset path for the banner image
+  linkUrl  String? // Deep link or external URL when tapped
+  priority Int     @default(0) // Lower = shown first
+  isActive Boolean @default(true)
+
+  startsAt DateTime? // Optional: only show after this time
+  endsAt   DateTime? // Optional: auto-hide after this time
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, priority])
+  @@map("banner")
+}
+
+model Announcement {
+  id       String  @id @default(cuid())
+  title    String
+  body     String  @db.Text
+  imageUrl String? // Optional thumbnail / cover image
+  linkUrl  String? // Optional link for "Read more"
+  priority Int     @default(0)
+  isActive Boolean @default(true)
+
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, priority])
+  @@map("announcement")
 }
 
 model SurgeZone {

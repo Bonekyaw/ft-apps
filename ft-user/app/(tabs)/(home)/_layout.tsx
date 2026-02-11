@@ -4,6 +4,10 @@ export default function HomeLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen
+        name="destination-search"
+        options={{ animation: "slide_from_bottom" }}
+      />
     </Stack>
   );
 }

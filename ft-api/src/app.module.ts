@@ -12,6 +12,7 @@ import { PrismaService } from './prisma.service.js';
 import { MapsModule } from './maps/maps.module.js';
 import { PricingModule } from './pricing/pricing.module.js';
 import { UsersModule } from './users/users.module.js';
+import { ContentModule } from './content/content.module.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,6 +31,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
     UsersModule,
     MapsModule,
     PricingModule,
+    ContentModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

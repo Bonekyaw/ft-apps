@@ -30,6 +30,7 @@
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "@thallesp/nestjs-better-auth": "^2.2.5",
+    "@vercel/blob": "^2.2.0",
     "axios": "^1.13.5",
     "better-auth": "^1.4.18",
     "dotenv": "^17.2.4",
