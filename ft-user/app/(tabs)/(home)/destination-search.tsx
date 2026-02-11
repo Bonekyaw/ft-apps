@@ -9,9 +9,10 @@ import {
   FlatList,
   TextInput,
   ActivityIndicator,
+  Platform,
   useWindowDimensions,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +22,7 @@ import { useTranslation } from "@/lib/i18n";
 import { placesAutocomplete, type PlacesSuggestion } from "@/lib/api";
 import { Colors, Brand, FontSize, Spacing, BorderRadius } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useTabBarVisibility } from "@/context/tab-bar-context";
 import { useRideBookingStore, type StopLocation } from "@/store/ride-booking";
 import {
   StopListInput,
@@ -48,6 +50,17 @@ export default function DestinationSearchScreen() {
   const colors = Colors[colorScheme ?? "light"];
   const { t } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
+  const { setTabBarHidden } = useTabBarVisibility();
+
+  // Hide Android tab bar when this screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === "android") setTabBarHidden(true);
+      return () => {
+        if (Platform.OS === "android") setTabBarHidden(false);
+      };
+    }, [setTabBarHidden]),
+  );
 
   // Store
   const stops = useRideBookingStore((s) => s.stops);
@@ -142,11 +155,9 @@ export default function DestinationSearchScreen() {
   // Select a suggestion from autocomplete
   const handleSelectSuggestion = useCallback(
     (item: PlacesSuggestion) => {
-      // We need lat/lng — for now use placeId as reference; a real flow would
-      // call place details to get coords. We store what we have.
       const stop: StopLocation = {
         address: item.description,
-        latitude: 0, // will be resolved at route-quote time from placeId
+        latitude: 0,
         longitude: 0,
         placeId: item.placeId,
         mainText: item.mainText,
@@ -207,11 +218,10 @@ export default function DestinationSearchScreen() {
         {
           backgroundColor: colors.background,
           paddingTop: insets.top,
-          paddingBottom: insets.bottom,
         },
       ]}
     >
-      {/* Header */}
+      {/* Header — back | title | Continue button */}
       <View style={[styles.header, { paddingHorizontal: horizontalPadding + Spacing.sm }]}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.text} />
@@ -219,7 +229,22 @@ export default function DestinationSearchScreen() {
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           {t("destination.title")}
         </Text>
-        <View style={styles.backButton} />
+        {/* Continue in header (iOS escapes native tab, Android has tab hidden) */}
+        <Pressable
+          onPress={handleContinue}
+          disabled={!hasFilledStop}
+          style={styles.headerContinueBtn}
+          hitSlop={8}
+        >
+          <Text
+            style={[
+              styles.headerContinueText,
+              { color: hasFilledStop ? Brand.primary : colors.textMuted },
+            ]}
+          >
+            {t("destination.continue")}
+          </Text>
+        </Pressable>
       </View>
 
       {/* Stop list inputs */}
@@ -395,45 +420,6 @@ export default function DestinationSearchScreen() {
           )}
         </ScrollView>
       )}
-
-      {/* Continue button — pinned at bottom */}
-      {!isSearching && (
-        <View
-          style={[
-            styles.bottomBar,
-            {
-              backgroundColor: colors.background,
-              borderTopColor: colors.border,
-              paddingHorizontal: horizontalPadding + Spacing.md,
-              paddingBottom: Math.max(insets.bottom, Spacing.md),
-            },
-          ]}
-        >
-          <Pressable
-            onPress={handleContinue}
-            disabled={!hasFilledStop}
-            style={[
-              styles.continueBtn,
-              {
-                backgroundColor: hasFilledStop
-                  ? Brand.primary
-                  : colors.inputBackground,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.continueBtnText,
-                {
-                  color: hasFilledStop ? Brand.secondary : colors.textMuted,
-                },
-              ]}
-            >
-              {t("destination.continue")}
-            </Text>
-          </Pressable>
-        </View>
-      )}
     </View>
   );
 }
@@ -465,6 +451,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flex: 1,
     textAlign: "center",
+  },
+  headerContinueBtn: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+  },
+  headerContinueText: {
+    fontSize: FontSize.md,
+    fontWeight: "700",
   },
 
   // Search overlay
@@ -550,21 +544,5 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: FontSize.sm,
     fontWeight: "600",
-  },
-
-  // Bottom bar
-  bottomBar: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: Spacing.sm,
-  },
-  continueBtn: {
-    height: 50,
-    borderRadius: BorderRadius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueBtnText: {
-    fontSize: FontSize.md,
-    fontWeight: "700",
   },
 });

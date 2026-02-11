@@ -105,7 +105,7 @@ function GlassTabButton({
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export function AndroidGlassTabs() {
+export function AndroidGlassTabs({ hidden = false }: { hidden?: boolean }) {
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, 12);
   const { t } = useTranslation();
@@ -122,39 +122,41 @@ export function AndroidGlassTabs() {
         ))}
       </TabList>
 
-      {/* Floating glass pill */}
-      <View style={[styles.floatingContainer, { bottom: bottomPad }]}>
-        <View style={styles.pill}>
-          {/* Blur layer */}
-          <BlurView
-            intensity={50}
-            tint="light"
-            experimentalBlurMethod="dimezisBlurView"
-            style={StyleSheet.absoluteFill}
-          />
+      {/* Floating glass pill — hidden when a full-screen page is active */}
+      {!hidden && (
+        <View style={[styles.floatingContainer, { bottom: bottomPad }]}>
+          <View style={styles.pill}>
+            {/* Blur layer */}
+            <BlurView
+              intensity={50}
+              tint="light"
+              experimentalBlurMethod="dimezisBlurView"
+              style={StyleSheet.absoluteFill}
+            />
 
-          {/* Semi-transparent overlay for the glass tint */}
-          <View style={styles.glassOverlay} />
+            {/* Semi-transparent overlay for the glass tint */}
+            <View style={styles.glassOverlay} />
 
-          {/* Subtle top border highlight */}
-          <View style={styles.topHighlight} />
+            {/* Subtle top border highlight */}
+            <View style={styles.topHighlight} />
 
-          {/* Tab buttons */}
-          <View style={styles.tabRow}>
-            {TABS_CONFIG.map((tab) => (
-              <TabTrigger key={tab.name} name={tab.name} style={styles.trigger}>
-                <GlassTabButton
-                  name={tab.name}
-                  labelKey={tab.labelKey}
-                  t={t}
-                  icon={tab.icon}
-                  iconFilled={tab.iconFilled}
-                />
-              </TabTrigger>
-            ))}
+            {/* Tab buttons */}
+            <View style={styles.tabRow}>
+              {TABS_CONFIG.map((tab) => (
+                <TabTrigger key={tab.name} name={tab.name} style={styles.trigger}>
+                  <GlassTabButton
+                    name={tab.name}
+                    labelKey={tab.labelKey}
+                    t={t}
+                    icon={tab.icon}
+                    iconFilled={tab.iconFilled}
+                  />
+                </TabTrigger>
+              ))}
+            </View>
           </View>
         </View>
-      </View>
+      )}
     </Tabs>
   );
 }

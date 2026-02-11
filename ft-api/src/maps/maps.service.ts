@@ -332,8 +332,15 @@ export class MapsService {
   // ---------------------------------------------------------------------------
 
   /**
+   * Plus Code pattern — e.g. "Q5RP+V5G" or "Q5RP+V5G, Yangon".
+   * Google Geocoding returns these when no street address exists.
+   */
+  private static readonly PLUS_CODE_RE = /^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}\b/i;
+
+  /**
    * Convert lat/lng to a human-readable address using Google Geocoding API.
-   * Returns the best formatted address, or null if nothing found.
+   * Skips Plus Code results (e.g. "Q5RP+V5G") and returns the first
+   * real street/locality address instead.
    */
   async reverseGeocode(
     latitude: number,
@@ -347,24 +354,68 @@ export class MapsService {
       results?: Array<{
         formatted_address: string;
         place_id: string;
+        types?: string[];
       }>;
     }>(url, {
       params: {
         latlng: `${latitude},${longitude}`,
         key: apiKey,
         language: 'en',
+        result_type: 'street_address|route|sublocality|locality|neighborhood',
       },
       timeout: 10_000,
     });
 
-    if (data.status !== 'OK' || !data.results?.length) {
+    // If filtered result_type returned nothing, retry without the filter
+    if (data.status === 'ZERO_RESULTS' || !data.results?.length) {
+      const { data: fallback } = await axios.get<{
+        status: string;
+        results?: Array<{
+          formatted_address: string;
+          place_id: string;
+        }>;
+      }>(url, {
+        params: {
+          latlng: `${latitude},${longitude}`,
+          key: apiKey,
+          language: 'en',
+        },
+        timeout: 10_000,
+      });
+
+      if (fallback.status !== 'OK' || !fallback.results?.length) {
+        return null;
+      }
+
+      // Pick first non-Plus-Code result from the unfiltered response
+      const best = this.pickNonPlusCode(fallback.results);
+      return best;
+    }
+
+    if (data.status !== 'OK') {
       return null;
     }
 
-    const best = data.results[0];
+    const best = this.pickNonPlusCode(data.results);
+    return best;
+  }
+
+  /**
+   * From a list of geocode results, return the first whose formatted_address
+   * does NOT start with a Plus Code. Falls back to the first result.
+   */
+  private pickNonPlusCode(
+    results: Array<{ formatted_address: string; place_id: string }>,
+  ): { address: string; placeId: string } | null {
+    if (!results.length) return null;
+
+    const readable = results.find(
+      (r) => !MapsService.PLUS_CODE_RE.test(r.formatted_address),
+    );
+    const chosen = readable ?? results[0];
     return {
-      address: best.formatted_address,
-      placeId: best.place_id,
+      address: chosen.formatted_address,
+      placeId: chosen.place_id,
     };
   }
 }

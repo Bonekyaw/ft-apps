@@ -5,8 +5,9 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import MapView, { PROVIDER_GOOGLE, type Region } from "react-native-maps";
@@ -16,11 +17,15 @@ import { useTranslation } from "@/lib/i18n";
 import { reverseGeocode } from "@/lib/api";
 import { Colors, Brand, FontSize, Spacing, BorderRadius } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useTabBarVisibility } from "@/context/tab-bar-context";
 import { useRideBookingStore } from "@/store/ride-booking";
 
 // Yangon default
 const DEFAULT_LAT = 16.8409;
 const DEFAULT_LNG = 96.1735;
+
+/** Height of the iOS native tab bar (points). Card must sit above it. */
+const IOS_TAB_BAR_HEIGHT = 50;
 
 export default function PinOnMapScreen() {
   const router = useRouter();
@@ -28,6 +33,17 @@ export default function PinOnMapScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const { t } = useTranslation();
+  const { setTabBarHidden } = useTabBarVisibility();
+
+  // Hide Android tab bar when this screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === "android") setTabBarHidden(true);
+      return () => {
+        if (Platform.OS === "android") setTabBarHidden(false);
+      };
+    }, [setTabBarHidden]),
+  );
 
   const activeStopIndex = useRideBookingStore((s) => s.activeStopIndex);
   const setStop = useRideBookingStore((s) => s.setStop);
@@ -96,48 +112,69 @@ export default function PinOnMapScreen() {
   }, [activeStopIndex, address, region, router, setStop, t]);
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          { backgroundColor: colors.background },
-        ]}
-      >
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <MaterialIcons name="arrow-back" size={24} color={colors.text} />
+    <View style={styles.screen}>
+      {/* ── Full-screen map ── */}
+      <MapView
+        ref={mapRef}
+        provider={PROVIDER_GOOGLE}
+        style={StyleSheet.absoluteFill}
+        initialRegion={region}
+        showsUserLocation
+        showsMyLocationButton={false}
+        onRegionChangeComplete={handleRegionChange}
+      />
+
+      {/* Center pin */}
+      <View style={styles.pinWrapper} pointerEvents="none">
+        <MaterialIcons name="place" size={48} color={Brand.error} />
+      </View>
+
+      {/* ── Floating top bar — back (left) + confirm (right) ── */}
+      <View style={[styles.topBar, { top: insets.top + Spacing.xs }]}>
+        {/* Back button */}
+        <Pressable
+          onPress={() => router.back()}
+          style={[styles.floatingBtn, { backgroundColor: colors.background }]}
+        >
+          <MaterialIcons name="arrow-back" size={22} color={colors.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {t("destination.pinOnMapTitle")}
-        </Text>
-        <View style={styles.backBtn} />
+
+        {/* Confirm Location — top-right (escapes iOS native tab) */}
+        <Pressable
+          onPress={handleConfirm}
+          disabled={isLoading}
+          style={[
+            styles.confirmChip,
+            {
+              backgroundColor: isLoading ? colors.inputBackground : Brand.primary,
+            },
+          ]}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color={Brand.primary} />
+          ) : (
+            <>
+              <MaterialIcons name="check" size={18} color={Brand.secondary} />
+              <Text style={[styles.confirmChipText, { color: Brand.secondary }]}>
+                {t("destination.confirmLocation")}
+              </Text>
+            </>
+          )}
+        </Pressable>
       </View>
 
-      {/* Map */}
-      <View style={styles.mapContainer}>
-        <MapView
-          ref={mapRef}
-          provider={PROVIDER_GOOGLE}
-          style={StyleSheet.absoluteFill}
-          initialRegion={region}
-          showsUserLocation
-          showsMyLocationButton
-          onRegionChangeComplete={handleRegionChange}
-        />
-
-        {/* Center pin */}
-        <View style={styles.pinWrapper} pointerEvents="none">
-          <MaterialIcons name="place" size={48} color={Brand.error} />
-        </View>
-      </View>
-
-      {/* Bottom card */}
+      {/* ── Bottom address card ── */}
+      {/* iOS: positioned above the native tab bar; Android: at screen bottom */}
       <View
         style={[
           styles.bottomCard,
           {
             backgroundColor: colors.background,
-            paddingBottom: Math.max(insets.bottom, Spacing.md),
+            bottom: Platform.OS === "ios" ? IOS_TAB_BAR_HEIGHT : 0,
+            paddingBottom:
+              Platform.OS === "ios"
+                ? Spacing.md
+                : Math.max(insets.bottom, Spacing.md),
           },
         ]}
       >
@@ -165,29 +202,6 @@ export default function PinOnMapScreen() {
             </Text>
           )}
         </View>
-
-        {/* Confirm button */}
-        <Pressable
-          onPress={handleConfirm}
-          disabled={isLoading}
-          style={[
-            styles.confirmBtn,
-            {
-              backgroundColor: isLoading ? colors.inputBackground : Brand.primary,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.confirmBtnText,
-              {
-                color: isLoading ? colors.textMuted : Brand.secondary,
-              },
-            ]}
-          >
-            {t("destination.confirmLocation")}
-          </Text>
-        </Pressable>
       </View>
     </View>
   );
@@ -195,48 +209,68 @@ export default function PinOnMapScreen() {
 
 // ---------------------------------------------------------------------------
 
+const FLOAT_BTN_SIZE = 42;
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#fff",
   },
 
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    zIndex: 10,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: FontSize.md,
-    fontWeight: "600",
-    flex: 1,
-    textAlign: "center",
-  },
-
-  // Map
-  mapContainer: {
-    flex: 1,
-  },
+  // Center pin
   pinWrapper: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
-    // Offset pin slightly so its point is at center
     paddingBottom: 48,
   },
 
-  // Bottom card
+  // Floating top bar
+  topBar: {
+    position: "absolute",
+    left: Spacing.md,
+    right: Spacing.md,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  floatingBtn: {
+    width: FLOAT_BTN_SIZE,
+    height: FLOAT_BTN_SIZE,
+    borderRadius: FLOAT_BTN_SIZE / 2,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  confirmChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    height: FLOAT_BTN_SIZE,
+    paddingHorizontal: Spacing.md,
+    borderRadius: FLOAT_BTN_SIZE / 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  confirmChipText: {
+    fontSize: FontSize.sm,
+    fontWeight: "700",
+  },
+
+  // Bottom address card
   bottomCard: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingTop: Spacing.md,
     paddingHorizontal: Spacing.md,
     borderTopLeftRadius: BorderRadius.lg,
@@ -267,15 +301,5 @@ const styles = StyleSheet.create({
   addressText: {
     flex: 1,
     fontSize: FontSize.sm,
-  },
-  confirmBtn: {
-    height: 50,
-    borderRadius: BorderRadius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmBtnText: {
-    fontSize: FontSize.md,
-    fontWeight: "700",
   },
 });
