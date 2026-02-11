@@ -12,6 +12,10 @@ export default function HomeLayout() {
         name="pin-on-map"
         options={{ animation: "slide_from_right" }}
       />
+      <Stack.Screen
+        name="set-pickup"
+        options={{ animation: "slide_from_right" }}
+      />
     </Stack>
   );
 }

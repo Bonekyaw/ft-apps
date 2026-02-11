@@ -172,6 +172,21 @@
     "confirmLocation": "Confirm Location",
     "loadingAddress": "Getting address…"
   },
+  "pickup": {
+    "title": "Set Pickup",
+    "instructions": "Pickup Instructions",
+    "instructionsPlaceholder": "e.g. Wait at the red gate",
+    "takePhoto": "Take Photo",
+    "choosePhoto": "Choose from Gallery",
+    "removePhoto": "Remove Photo",
+    "confirmBooking": "Confirm Booking",
+    "uploading": "Uploading photo…",
+    "creating": "Creating ride…",
+    "defaultAddress": "Current Location",
+    "searchPlaceholder": "Search pickup location…",
+    "photoHint": "Add a photo to help the driver find you",
+    "cancel": "Cancel"
+  },
   "explore": {
     "searchPlaceholder": "Search for a place or address"
   },

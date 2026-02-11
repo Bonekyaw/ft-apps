@@ -34,6 +34,11 @@ interface RideBookingState {
   petFriendly: boolean;
   fuelPreference: FuelFilter;
 
+  // Pickup
+  pickup: StopLocation | null;
+  pickupNote: string;
+  pickupPhotoUri: string | null;
+
   // Actions — stops
   setStop: (index: number, location: StopLocation | null) => void;
   addStop: () => boolean;
@@ -44,6 +49,11 @@ interface RideBookingState {
   setVehicleType: (type: VehicleFilter) => void;
   togglePetFriendly: () => void;
   setFuelPreference: (pref: FuelFilter) => void;
+
+  // Actions — pickup
+  setPickup: (location: StopLocation | null) => void;
+  setPickupNote: (note: string) => void;
+  setPickupPhotoUri: (uri: string | null) => void;
 
   // Reset everything
   reset: () => void;
@@ -59,6 +69,9 @@ const INITIAL_STATE = {
   vehicleType: "ANY" as VehicleFilter,
   petFriendly: false,
   fuelPreference: "ANY" as FuelFilter,
+  pickup: null as StopLocation | null,
+  pickupNote: "",
+  pickupPhotoUri: null as string | null,
 };
 
 // ---------------------------------------------------------------------------
@@ -106,6 +119,18 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
 
   setFuelPreference(pref) {
     set({ fuelPreference: pref });
+  },
+
+  setPickup(location) {
+    set({ pickup: location });
+  },
+
+  setPickupNote(note) {
+    set({ pickupNote: note });
+  },
+
+  setPickupPhotoUri(uri) {
+    set({ pickupPhotoUri: uri });
   },
 
   reset() {

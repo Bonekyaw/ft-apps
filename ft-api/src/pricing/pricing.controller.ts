@@ -1,14 +1,18 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
+  Param,
+  Post,
   Put,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { RidePricingService } from './ride-pricing.service.js';
 import { PrismaService } from '../prisma.service.js';
+import { PricingCacheService } from './pricing-cache.service.js';
 import { VehicleType } from '../generated/prisma/enums.js';
 
 const ADMIN_ROLES = ['ADMIN', 'MANAGER', 'OPERATION', 'SUPERADMIN'];
@@ -31,7 +35,12 @@ export class PricingController {
   constructor(
     private readonly pricing: RidePricingService,
     private readonly prisma: PrismaService,
+    private readonly cache: PricingCacheService,
   ) {}
+
+  // ===================================================
+  // PRICING CONFIG
+  // ===================================================
 
   @Get('config')
   async getConfig(@Session() session: UserSession | null) {
@@ -106,6 +115,9 @@ export class PricingController {
       },
     });
 
+    // Refresh pricing cache so subsequent calculateFare calls see the update
+    await this.cache.refreshPricingConfigs();
+
     return {
       id: config.id,
       vehicleType: config.vehicleType,
@@ -120,5 +132,44 @@ export class PricingController {
       specialDayRates: config.specialDayRates ?? [],
       updatedAt: config.updatedAt,
     };
+  }
+
+  // ===================================================
+  // TOWNSHIP SURCHARGE — ADMIN CRUD
+  // ===================================================
+
+  /** GET /pricing/township-surcharges — list all township surcharge rules. */
+  @Get('township-surcharges')
+  async listTownshipSurcharges(@Session() session: UserSession | null) {
+    assertAdmin(session);
+    const rows = await this.prisma.townshipSurcharge.findMany({
+      orderBy: { township: 'asc' },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      township: r.township,
+      fixedCharge: Number(r.fixedCharge),
+      updatedAt: r.updatedAt,
+    }));
+  }
+
+  /** POST /pricing/township-surcharges — create or update a surcharge rule. */
+  @Post('township-surcharges')
+  async upsertTownshipSurcharge(
+    @Session() session: UserSession | null,
+    @Body() body: { township: string; fixedCharge: number },
+  ) {
+    assertAdmin(session);
+    return this.pricing.upsertTownshipSurcharge(body);
+  }
+
+  /** DELETE /pricing/township-surcharges/:id — delete a surcharge rule. */
+  @Delete('township-surcharges/:id')
+  async deleteTownshipSurcharge(
+    @Session() session: UserSession | null,
+    @Param('id') id: string,
+  ) {
+    assertAdmin(session);
+    return this.pricing.deleteTownshipSurcharge(id);
   }
 }

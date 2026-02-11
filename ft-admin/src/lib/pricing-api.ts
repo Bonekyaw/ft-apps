@@ -51,6 +51,20 @@ export interface PricingConfigDto {
   updatedAt?: string;
 }
 
+// ── Township surcharge types ──
+
+export interface TownshipSurchargeDto {
+  id: string;
+  township: string;
+  fixedCharge: number;
+  updatedAt?: string;
+}
+
+export interface TownshipSurchargeInput {
+  township: string;
+  fixedCharge: number;
+}
+
 // ── API calls ──
 
 export async function getPricingConfig(): Promise<PricingConfigDto[]> {
@@ -73,4 +87,39 @@ export async function putPricingConfig(
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+// ── Township surcharge API calls ──
+
+export async function getTownshipSurcharges(): Promise<
+  TownshipSurchargeDto[]
+> {
+  const res = await fetch(`${BASE}/pricing/township-surcharges`, {
+    headers: await getAuthHeaders(),
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function upsertTownshipSurcharge(
+  body: TownshipSurchargeInput
+): Promise<TownshipSurchargeDto> {
+  const res = await fetch(`${BASE}/pricing/township-surcharges`, {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function deleteTownshipSurcharge(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/pricing/township-surcharges/${id}`, {
+    method: "DELETE",
+    headers: await getAuthHeaders(),
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await res.text());
 }

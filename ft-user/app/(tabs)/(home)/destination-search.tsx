@@ -196,8 +196,7 @@ export default function DestinationSearchScreen() {
   const handleContinue = useCallback(() => {
     const hasAtLeastOne = stops.some((s) => s !== null);
     if (!hasAtLeastOne) return;
-    // TODO: navigate to pickup/confirm screen
-    router.back();
+    router.push("/(tabs)/(home)/set-pickup");
   }, [stops, router]);
 
   // Responsive

@@ -182,6 +182,83 @@ export async function reverseGeocode(
 }
 
 // =========================================================================
+// Rides — Pickup Photo Upload
+// =========================================================================
+
+/**
+ * Upload a pickup location photo. Returns the Vercel Blob URL.
+ * The image is optimized server-side to 800x600 WebP.
+ */
+export async function uploadPickupPhoto(uri: string): Promise<string> {
+  const formData = new FormData();
+
+  // Determine file name and mime type from the URI
+  const filename = uri.split("/").pop() ?? "pickup.jpg";
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const mimeType =
+    ext === "png"
+      ? "image/png"
+      : ext === "webp"
+        ? "image/webp"
+        : "image/jpeg";
+
+  formData.append("file", {
+    uri,
+    name: filename,
+    type: mimeType,
+  } as unknown as Blob);
+
+  const { data } = await api.post<{ url: string }>(
+    "/rides/upload-photo",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 30_000,
+    },
+  );
+
+  return data.url;
+}
+
+// =========================================================================
+// Rides — Create Ride
+// =========================================================================
+
+export interface CreateRidePayload {
+  pickupAddress: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropoffAddress: string;
+  dropoffLat: number;
+  dropoffLng: number;
+  vehicleType?: string;
+  passengerNote?: string;
+  pickupPhotoUrl?: string;
+  routeQuoteId?: string;
+}
+
+export interface CreateRideResponse {
+  id: string;
+  status: string;
+  pickupAddress: string;
+  dropoffAddress: string;
+  totalFare: number;
+  currency: string;
+  vehicleType: string;
+  createdAt: string;
+}
+
+/**
+ * Create a new ride from the full booking payload.
+ */
+export async function createRide(
+  payload: CreateRidePayload,
+): Promise<CreateRideResponse> {
+  const { data } = await api.post<CreateRideResponse>("/rides", payload);
+  return data;
+}
+
+// =========================================================================
 // Helpers
 // =========================================================================
 

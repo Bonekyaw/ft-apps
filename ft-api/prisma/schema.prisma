@@ -313,8 +313,11 @@ model Ride {
   cancelledBy        String? // userId of who cancelled
 
   // Notes
-  passengerNote String?
-  driverNote    String?
+  passengerNote  String?
+  driverNote     String?
+
+  // Pickup context for driver
+  pickupPhotoUrl String? // Vercel Blob URL of landmark photo
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -577,6 +580,26 @@ model Announcement {
 
   @@index([isActive, priority])
   @@map("announcement")
+}
+
+// ============================================
+// TOWNSHIP-TO-TOWNSHIP SURCHARGE
+// ============================================
+
+model TownshipSurcharge {
+  id String @id @default(cuid())
+
+  /// Township name (e.g. "Thanlyin"). Unique — one rule per township.
+  township String @unique
+
+  /// Fixed charge applied when a ride enters or exits this township.
+  /// If both origin and destination are within this same township, no charge applies.
+  fixedCharge Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("township_surcharge")
 }
 
 model SurgeZone {

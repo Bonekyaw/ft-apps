@@ -9,6 +9,10 @@ export interface RouteQuoteInput {
   dropoffLat: number;
   dropoffLng: number;
   vehicleType?: string;
+  /** Township name of the pickup location. */
+  originTownship?: string;
+  /** Township name of the dropoff location. */
+  destinationTownship?: string;
 }
 
 export interface RouteQuoteResult {
@@ -39,19 +43,23 @@ export class RouteQuoteService {
       { lat: dropoffLat, lng: dropoffLng },
     );
 
-    // Calculate Standard fare
-    const standardFare = await this.pricing.calculateFare(
-      route.distanceKm,
-      route.durationMinutes,
-      'STANDARD',
-    );
+    // Calculate Standard fare (with optional township surcharge)
+    const standardFare = this.pricing.calculateFare({
+      distanceKm: route.distanceKm,
+      durationMinutes: route.durationMinutes,
+      vehicleType: 'STANDARD',
+      originTownship: input.originTownship,
+      destinationTownship: input.destinationTownship,
+    });
 
-    // Calculate Plus fare
-    const plusFare = await this.pricing.calculateFare(
-      route.distanceKm,
-      route.durationMinutes,
-      'PLUS',
-    );
+    // Calculate Plus fare (with optional township surcharge)
+    const plusFare = this.pricing.calculateFare({
+      distanceKm: route.distanceKm,
+      durationMinutes: route.durationMinutes,
+      vehicleType: 'PLUS',
+      originTownship: input.originTownship,
+      destinationTownship: input.destinationTownship,
+    });
 
     const quote = await this.prisma.routeQuote.create({
       data: {

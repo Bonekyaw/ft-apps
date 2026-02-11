@@ -172,6 +172,21 @@
     "confirmLocation": "နေရာ အတည်ပြုမည်",
     "loadingAddress": "လိပ်စာ ရယူနေပါသည်…"
   },
+  "pickup": {
+    "title": "စီးမည့်နေရာ သတ်မှတ်ပါ",
+    "instructions": "စီးမည့်နေရာ ညွှန်ကြားချက်",
+    "instructionsPlaceholder": "ဥပမာ - တံခါးနီရှေ့မှာ စောင့်ပါ",
+    "takePhoto": "ဓာတ်ပုံ ရိုက်မည်",
+    "choosePhoto": "ဂယ်လရီမှ ရွေးမည်",
+    "removePhoto": "ဓာတ်ပုံ ဖျက်မည်",
+    "confirmBooking": "ယာဉ်ခေါ်မည်",
+    "uploading": "ဓာတ်ပုံ တင်နေပါသည်…",
+    "creating": "ခရီးစဉ် ဖန်တီးနေပါသည်…",
+    "defaultAddress": "လက်ရှိ တည်နေရာ",
+    "searchPlaceholder": "စီးမည့်နေရာ ရှာပါ…",
+    "photoHint": "ယာဉ်မောင်းကို ရှာရလွယ်အောင် ဓာတ်ပုံ ထည့်ပါ",
+    "cancel": "ပယ်ဖျက်မည်"
+  },
   "explore": {
     "searchPlaceholder": "နေရာ သို့မဟုတ် လိပ်စာ ရှာပါ"
   },

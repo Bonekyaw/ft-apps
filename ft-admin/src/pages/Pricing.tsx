@@ -33,12 +33,26 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   getPricingConfig,
   putPricingConfig,
+  getTownshipSurcharges,
+  upsertTownshipSurcharge,
+  deleteTownshipSurcharge,
   type PricingConfigDto,
   type DistanceBandDto,
   type SpecialDayRateDto,
   type TimeRuleDto,
+  type TownshipSurchargeDto,
 } from "@/lib/pricing-api";
 import { PlusIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
@@ -108,6 +122,22 @@ export default function PricingPage() {
   const [form, setForm] = useState<ConfigForm>(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
 
+  // Township surcharge state
+  const [surcharges, setSurcharges] = useState<TownshipSurchargeDto[]>([]);
+  const [surchargeLoading, setSurchargeLoading] = useState(true);
+  const [surchargeSheetOpen, setSurchargeSheetOpen] = useState(false);
+  const [editingSurcharge, setEditingSurcharge] =
+    useState<TownshipSurchargeDto | null>(null);
+  const [surchargeForm, setSurchargeForm] = useState({
+    township: "",
+    fixedCharge: 0,
+  });
+  const [savingSurcharge, setSavingSurcharge] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingSurchargeId, setDeletingSurchargeId] = useState<string | null>(
+    null
+  );
+
   // ── Data loading ──
 
   async function loadConfigs() {
@@ -124,8 +154,22 @@ export default function PricingPage() {
     }
   }
 
+  async function loadSurcharges() {
+    setSurchargeLoading(true);
+    try {
+      setSurcharges(await getTownshipSurcharges());
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Failed to load township surcharges"
+      );
+    } finally {
+      setSurchargeLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadConfigs();
+    loadSurcharges();
   }, []);
 
   // ── Sheet open/close ──
@@ -170,6 +214,59 @@ export default function PricingPage() {
       setError(e instanceof Error ? e.message : "Failed to save config");
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ── Township surcharge sheet ──
+
+  function openAddSurcharge() {
+    setEditingSurcharge(null);
+    setSurchargeForm({ township: "", fixedCharge: 0 });
+    setSurchargeSheetOpen(true);
+  }
+
+  function openEditSurcharge(s: TownshipSurchargeDto) {
+    setEditingSurcharge(s);
+    setSurchargeForm({
+      township: s.township,
+      fixedCharge: s.fixedCharge,
+    });
+    setSurchargeSheetOpen(true);
+  }
+
+  async function handleSaveSurcharge() {
+    setSavingSurcharge(true);
+    setError(null);
+    try {
+      await upsertTownshipSurcharge(surchargeForm);
+      setSurchargeSheetOpen(false);
+      loadSurcharges();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Failed to save township surcharge"
+      );
+    } finally {
+      setSavingSurcharge(false);
+    }
+  }
+
+  function confirmDeleteSurcharge(id: string) {
+    setDeletingSurchargeId(id);
+    setDeleteDialogOpen(true);
+  }
+
+  async function handleDeleteSurcharge() {
+    if (!deletingSurchargeId) return;
+    setError(null);
+    try {
+      await deleteTownshipSurcharge(deletingSurchargeId);
+      setDeleteDialogOpen(false);
+      setDeletingSurchargeId(null);
+      loadSurcharges();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Failed to delete township surcharge"
+      );
     }
   }
 
@@ -285,7 +382,7 @@ export default function PricingPage() {
         <CardContent className="space-y-1">
           <p className="text-sm text-muted-foreground">
             <strong>Total</strong> = Base Fare + Distance Fare + (Duration min
-            &times; Time Rate) + Booking Fee
+            &times; Time Rate) + Booking Fee + Township Surcharge
           </p>
           <p className="text-sm text-muted-foreground">
             <strong>Distance Fare</strong>: Each km uses the per-km rate of the
@@ -295,6 +392,11 @@ export default function PricingPage() {
           <p className="text-sm text-muted-foreground">
             <strong>Special Days</strong>: On weekends or selected holidays, the
             special day per-km rate replaces distance bands entirely.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            <strong>Township Surcharge</strong>: A fixed charge applied when a
+            ride enters or exits a designated township. If both pickup and
+            destination are in the same township, no charge applies.
           </p>
           <p className="text-sm text-muted-foreground">
             Surge &amp; Plus premium are applied on top. Result is rounded to
@@ -397,7 +499,164 @@ export default function PricingPage() {
         </CardContent>
       </Card>
 
-      {/* ── Sheet ── */}
+      {/* ── Township surcharge section ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Township Fixed Charges</CardTitle>
+          <CardDescription>
+            Define a fixed charge for specific townships. The charge is applied
+            whenever a ride enters or exits the township. If both pickup and
+            destination are within the same township, no charge applies.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={openAddSurcharge} className="mb-4">
+            <PlusIcon className="mr-2 size-4" />
+            Add township
+          </Button>
+          {surchargeLoading ? (
+            <p className="text-muted-foreground text-sm">Loading...</p>
+          ) : surcharges.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No township surcharge rules yet.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Township</TableHead>
+                  <TableHead>Fixed Charge (MMK)</TableHead>
+                  <TableHead className="w-[80px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {surcharges.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">
+                      {s.township}
+                    </TableCell>
+                    <TableCell>
+                      {Number(s.fixedCharge).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditSurcharge(s)}
+                        >
+                          <PencilIcon className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => confirmDeleteSurcharge(s.id)}
+                        >
+                          <Trash2Icon className="size-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Township surcharge Sheet ── */}
+      <Sheet open={surchargeSheetOpen} onOpenChange={setSurchargeSheetOpen}>
+        <SheetContent className="flex flex-col overflow-y-auto px-6 sm:max-w-md">
+          <SheetHeader className="px-0 pb-4">
+            <SheetTitle>
+              {editingSurcharge
+                ? "Edit township surcharge"
+                : "Add township surcharge"}
+            </SheetTitle>
+          </SheetHeader>
+
+          <div className="flex flex-1 flex-col gap-5 px-0">
+            <div className="space-y-1.5">
+              <Label>Township name</Label>
+              <Input
+                className="h-9"
+                placeholder="e.g. Thanlyin"
+                value={surchargeForm.township}
+                onChange={(e) =>
+                  setSurchargeForm((s) => ({
+                    ...s,
+                    township: e.target.value,
+                  }))
+                }
+                disabled={!!editingSurcharge}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Fixed charge (MMK)</Label>
+              <Input
+                type="number"
+                min={0}
+                step={100}
+                className="h-9"
+                value={surchargeForm.fixedCharge}
+                onChange={(e) =>
+                  setSurchargeForm((s) => ({
+                    ...s,
+                    fixedCharge: Number(e.target.value) || 0,
+                  }))
+                }
+              />
+            </div>
+            <p className="text-muted-foreground text-xs">
+              This charge is added to the fare when a ride starts in this
+              township and ends elsewhere, or starts elsewhere and ends here. No
+              charge for intra-township trips.
+            </p>
+          </div>
+
+          <div className="flex gap-2 border-t pt-4">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setSurchargeSheetOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveSurcharge}
+              disabled={savingSurcharge || !surchargeForm.township.trim()}
+              className="flex-1"
+            >
+              {savingSurcharge
+                ? "Saving..."
+                : editingSurcharge
+                  ? "Update"
+                  : "Create"}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Delete confirmation ── */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete surcharge rule?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this township surcharge rule. The
+              in-memory cache will be updated immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSurcharge}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Pricing config Sheet ── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="flex flex-col overflow-y-auto px-6 sm:max-w-lg">
           <SheetHeader className="px-0 pb-4">
