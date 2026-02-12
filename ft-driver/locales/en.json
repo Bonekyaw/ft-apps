@@ -143,6 +143,29 @@
   "explore": {
     "searchPlaceholder": "Search for a place or address"
   },
+  "rideRequest": {
+    "title": "New Ride Request",
+    "pickup": "Pickup",
+    "dropoff": "Drop-off",
+    "fare": "Estimated Fare",
+    "vehicleType": "Vehicle Type",
+    "note": "Passenger Note",
+    "accept": "Accept",
+    "reject": "Reject",
+    "countdown": "%{count}s remaining",
+    "rideTaken": "Ride Already Taken",
+    "rideTakenMessage": "Another driver has already accepted this ride."
+  },
+  "activeRide": {
+    "navigateToPickup": "Navigate to Pickup",
+    "pickupLabel": "Pickup Location",
+    "dropoffLabel": "Drop-off",
+    "fareLabel": "Fare",
+    "passengerNote": "Passenger Note",
+    "cancel": "Cancel Ride",
+    "cancelTitle": "Cancel Ride?",
+    "cancelMessage": "Are you sure you want to cancel this ride?"
+  },
   "status": {
     "online": "Online",
     "offline": "Offline"

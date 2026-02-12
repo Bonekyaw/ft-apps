@@ -188,6 +188,20 @@ export function getErrorMessage(err: unknown): string {
 }
 
 // =========================================================================
+// Driver Status
+// =========================================================================
+
+/**
+ * Directly set the driver's status (ONLINE / OFFLINE) in the database
+ * via REST. This is the reliable path — Ably webhooks are a secondary signal.
+ */
+export async function updateDriverStatus(
+  status: "ONLINE" | "OFFLINE",
+): Promise<void> {
+  await api.patch("/dispatch/status", { status });
+}
+
+// =========================================================================
 // Driver Location
 // =========================================================================
 
@@ -203,6 +217,46 @@ export async function updateDriverLocation(data: {
   accuracy?: number;
 }): Promise<void> {
   await api.post("/dispatch/location", data);
+}
+
+// =========================================================================
+// Ride Accept / Skip
+// =========================================================================
+
+export interface AcceptRideResult {
+  id: string;
+  status: string;
+  pickupAddress: string;
+  dropoffAddress: string;
+  totalFare: number;
+  currency: string;
+  vehicleType: string;
+  acceptedAt: string;
+}
+
+/**
+ * Accept a pending ride. Returns the updated ride on success.
+ * Throws 409 Conflict if another driver already accepted.
+ */
+export async function acceptRide(rideId: string): Promise<AcceptRideResult> {
+  const { data } = await api.post<AcceptRideResult>(
+    `/rides/${rideId}/accept`,
+  );
+  return data;
+}
+
+/**
+ * Skip (reject) a ride request. The ride stays PENDING for other drivers.
+ */
+export async function skipRide(rideId: string): Promise<void> {
+  await api.post(`/rides/${rideId}/skip`);
+}
+
+/**
+ * Cancel an accepted ride. Called when the driver presses "Cancel Ride".
+ */
+export async function cancelRide(rideId: string): Promise<void> {
+  await api.post(`/rides/${rideId}/cancel`, { reason: 'DRIVER_CANCELLED' });
 }
 
 // =========================================================================

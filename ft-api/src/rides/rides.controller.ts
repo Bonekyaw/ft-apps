@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Logger,
+  Param,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -81,5 +83,58 @@ export class RidesController {
       pickupPhotoUrl: body.pickupPhotoUrl,
       routeQuoteId: body.routeQuoteId,
     });
+  }
+
+  /**
+   * GET /rides/:id/status
+   * Lightweight polling endpoint for the rider to check ride status.
+   * Returns the current status + driver info if accepted.
+   */
+  @Get(':id/status')
+  async getRideStatus(
+    @Session() session: UserSession,
+    @Param('id') rideId: string,
+  ) {
+    return this.ridesService.getRideStatus(rideId, session.user.id);
+  }
+
+  /**
+   * POST /rides/:id/accept
+   * Driver accepts a pending ride. Race-condition safe.
+   */
+  @Post(':id/accept')
+  @HttpCode(HttpStatus.OK)
+  async acceptRide(
+    @Session() session: UserSession,
+    @Param('id') rideId: string,
+  ) {
+    this.logger.log(`Driver user ${session.user.id} accepting ride ${rideId}`);
+    return this.ridesService.acceptRide(rideId, session.user.id);
+  }
+
+  /**
+   * POST /rides/:id/skip
+   * Driver declines a ride request. Ride stays PENDING for others.
+   */
+  @Post(':id/skip')
+  @HttpCode(HttpStatus.OK)
+  skipRide(@Session() session: UserSession, @Param('id') rideId: string) {
+    this.logger.log(`Driver user ${session.user.id} skipping ride ${rideId}`);
+    return this.ridesService.skipRide(rideId, session.user.id);
+  }
+
+  /**
+   * POST /rides/:id/cancel
+   * Cancel an accepted ride. Can be called by the driver or the passenger.
+   */
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  async cancelRide(
+    @Session() session: UserSession,
+    @Param('id') rideId: string,
+    @Body() body: { reason?: string },
+  ) {
+    this.logger.log(`User ${session.user.id} cancelling ride ${rideId}`);
+    return this.ridesService.cancelRide(rideId, session.user.id, body.reason);
   }
 }

@@ -327,6 +327,63 @@ export async function createRide(
 }
 
 // =========================================================================
+// Nearby Drivers
+// =========================================================================
+
+export interface NearbyDriver {
+  driverId: string;
+  userId: string;
+  driverName: string;
+  latitude: number;
+  longitude: number;
+  heading: number | null;
+  distanceMeters: number;
+}
+
+/**
+ * Fetch nearby online drivers around a pickup point.
+ * Used to render car markers on the map while searching for a driver.
+ */
+export async function fetchNearbyDrivers(
+  lat: number,
+  lng: number,
+  radius = 30000,
+  limit = 20,
+): Promise<NearbyDriver[]> {
+  const { data } = await api.get<{ count: number; drivers: NearbyDriver[] }>(
+    `/dispatch/nearby`,
+    { params: { lat, lng, radius, limit } },
+  );
+  return data.drivers;
+}
+
+// =========================================================================
+// Ride Status Polling
+// =========================================================================
+
+export interface RideStatusResult {
+  id: string;
+  status: string;
+  driverName: string | null;
+  driverLocation: {
+    latitude: number;
+    longitude: number;
+    heading: number | null;
+  } | null;
+}
+
+/**
+ * Poll the current status of a ride. Used as a fallback when Ably
+ * messages might be missed (e.g., due to late subscription).
+ */
+export async function fetchRideStatus(
+  rideId: string,
+): Promise<RideStatusResult> {
+  const { data } = await api.get<RideStatusResult>(`/rides/${rideId}/status`);
+  return data;
+}
+
+// =========================================================================
 // Helpers
 // =========================================================================
 
@@ -339,6 +396,17 @@ export function getErrorMessage(err: unknown): string {
     return status ? `Request failed (${status}): ${msg}` : String(msg);
   }
   return err instanceof Error ? err.message : "Request failed";
+}
+
+// =========================================================================
+// Ride Cancel
+// =========================================================================
+
+/**
+ * Cancel a ride (rider-initiated). Called when the rider cancels during search.
+ */
+export async function cancelRide(rideId: string): Promise<void> {
+  await api.post(`/rides/${rideId}/cancel`, { reason: 'USER_CANCELLED' });
 }
 
 // =========================================================================

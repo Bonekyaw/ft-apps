@@ -144,6 +144,29 @@
   "explore": {
     "searchPlaceholder": "နေရာ သို့မဟုတ် လိပ်စာ ရှာပါ"
   },
+  "rideRequest": {
+    "title": "ခရီးစဉ်အသစ် တောင်းဆိုချက်",
+    "pickup": "စီးမည့်နေရာ",
+    "dropoff": "ဆင်းမည့်နေရာ",
+    "fare": "ခန့်မှန်းခ",
+    "vehicleType": "ယာဉ်အမျိုးအစား",
+    "note": "ခရီးသည် မှတ်စု",
+    "accept": "လက်ခံမည်",
+    "reject": "ငြင်းမည်",
+    "countdown": "%{count} စက္ကန့် ကျန်ပါသည်",
+    "rideTaken": "ခရီးစဉ် ယူပြီးပြီ",
+    "rideTakenMessage": "အခြားယာဉ်မောင်းတစ်ဦးက ဤခရီးစဉ်ကို လက်ခံပြီးပါပြီ။"
+  },
+  "activeRide": {
+    "navigateToPickup": "စီးမည့်နေရာသို့ လမ်းညွှန်မည်",
+    "pickupLabel": "စီးမည့်နေရာ",
+    "dropoffLabel": "ဆင်းမည့်နေရာ",
+    "fareLabel": "နှုန်း",
+    "passengerNote": "ခရီးသည် မှတ်စု",
+    "cancel": "ခရီးစဉ် ပယ်ဖျက်မည်",
+    "cancelTitle": "ခရီးစဉ် ပယ်ဖျက်မလား?",
+    "cancelMessage": "ဤခရီးစဉ်ကို ပယ်ဖျက်လိုသည်မှာ သေချာပါသလား?"
+  },
   "status": {
     "online": "အွန်လိုင်း",
     "offline": "အော့ဖ်လိုင်း"

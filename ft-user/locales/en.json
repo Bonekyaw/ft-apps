@@ -203,7 +203,17 @@
     "min": "min",
     "km": "km",
     "booking": "Booking your ride…",
-    "selectFare": "Select your ride"
+    "selectFare": "Select your ride",
+    "findingDriver": "Finding your driver…",
+    "findingDriverMessage": "We're connecting you with the nearest available driver. This usually takes a few seconds.",
+    "driverAccepted": "Driver Found!",
+    "driverName": "%{name} is on the way",
+    "noDriverFound": "No Drivers Available",
+    "noDriverMessage": "No nearby drivers could be found at this time. Please try again.",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "driverCancelledTitle": "Ride Cancelled",
+    "driverCancelledMessage": "Your driver cancelled the ride. You can try booking again."
   },
   "explore": {
     "searchPlaceholder": "Search for a place or address"

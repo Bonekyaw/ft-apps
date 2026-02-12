@@ -3,6 +3,11 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { enterPresence, leavePresence } from "./ably";
 import { startTracking, stopTracking } from "./location-tracker";
+import { updateDriverStatus } from "./api";
+import {
+  subscribeToPrivateChannel,
+  unsubscribeFromPrivateChannel,
+} from "./ride-request-listener";
 
 interface DriverStatusState {
   /** Whether the driver is currently online (presence entered). */
@@ -26,10 +31,18 @@ export const useDriverStatusStore = create<DriverStatusState>()(
       goOnline: async (userId: string) => {
         set({ isTransitioning: true });
         try {
+          // 1. Set status in DB via REST (reliable — doesn't depend on webhooks)
+          await updateDriverStatus("ONLINE");
+          // 2. Enter Ably presence (for real-time features)
           await enterPresence(userId);
+          // 3. Start GPS tracking
           await startTracking();
+          // 4. Subscribe to private ride request channel
+          await subscribeToPrivateChannel(userId);
           set({ isOnline: true, isTransitioning: false });
         } catch {
+          // Attempt to revert DB status on failure
+          void updateDriverStatus("OFFLINE").catch(() => {});
           set({ isOnline: false, isTransitioning: false });
         }
       },
@@ -37,14 +50,18 @@ export const useDriverStatusStore = create<DriverStatusState>()(
       goOffline: async () => {
         set({ isTransitioning: true });
         try {
+          await unsubscribeFromPrivateChannel();
           await stopTracking();
           await leavePresence();
+          // Set status in DB via REST (reliable)
+          await updateDriverStatus("OFFLINE");
         } finally {
           set({ isOnline: false, isTransitioning: false });
         }
       },
 
       reset: () => {
+        void unsubscribeFromPrivateChannel();
         void stopTracking();
         set({ isOnline: false, isTransitioning: false });
       },

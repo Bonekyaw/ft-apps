@@ -1,9 +1,18 @@
-import React, { useEffect, useState } from "react";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
 import * as Location from "expo-location";
 import OnlineToggle from "@/components/driver/OnlineToggle";
+import RideRequestModal from "@/components/driver/RideRequestModal";
+import ActiveRideCard from "@/components/driver/ActiveRideCard";
+import { useRideStore } from "@/lib/ride-store";
+import { useDriverStatusStore } from "@/lib/driver-status-store";
+import { addLocationListener, type DriverCoords } from "@/lib/location-tracker";
 import { Brand } from "@/constants/theme";
+
+// Pre-require the car icon once (avoids re-resolve on every render)
+const CAR_ICON = require("@/assets/images/car-icon.png") as number;
+const CAR_SIZE = 56;
 
 const YANGON_FALLBACK = {
   latitude: 16.7808628,
@@ -12,10 +21,55 @@ const YANGON_FALLBACK = {
   longitudeDelta: 0.005,
 };
 
+// ── Car Marker (memoized — only re-renders when coords/heading change) ──
+const CarMarker = memo(function CarMarker({
+  latitude,
+  longitude,
+  heading,
+}: DriverCoords) {
+  return (
+    <Marker
+      coordinate={{ latitude, longitude }}
+      anchor={{ x: 0.5, y: 0.5 }}
+      flat
+      rotation={heading ?? 0}
+      tracksViewChanges={false}
+    >
+      <Image source={CAR_ICON} style={carStyles.icon} resizeMode="contain" />
+    </Marker>
+  );
+});
+
+// ── Pickup Marker (memoized — static position, never needs view changes) ──
+const PickupMarker = memo(function PickupMarker({
+  latitude,
+  longitude,
+  title,
+}: {
+  latitude: number;
+  longitude: number;
+  title: string;
+}) {
+  return (
+    <Marker
+      coordinate={{ latitude, longitude }}
+      title={title}
+      pinColor={Brand.success}
+      tracksViewChanges={false}
+    />
+  );
+});
+
 export default function DriverHomeScreen() {
   const [region, setRegion] = useState(YANGON_FALLBACK);
   const [locationReady, setLocationReady] = useState(false);
+  const [driverCoords, setDriverCoords] = useState<DriverCoords | null>(null);
+  const incomingRequest = useRideStore((s) => s.incomingRequest);
+  const activeRide = useRideStore((s) => s.activeRide);
+  const isOnline = useDriverStatusStore((s) => s.isOnline);
+  const mapRef = useRef<MapView>(null);
 
+  // ── Initial location (fast — last known first) ──
   useEffect(() => {
     let cancelled = false;
 
@@ -27,20 +81,24 @@ export default function DriverHomeScreen() {
           return;
         }
 
-        // Try last-known first for instant display
         const last = await Location.getLastKnownPositionAsync();
         if (!cancelled && last) {
-          setRegion({
+          const coords = {
             latitude: last.coords.latitude,
             longitude: last.coords.longitude,
             latitudeDelta: 0.005,
             longitudeDelta: 0.005,
+          };
+          setRegion(coords);
+          setDriverCoords({
+            latitude: last.coords.latitude,
+            longitude: last.coords.longitude,
+            heading: last.coords.heading ?? null,
           });
           setLocationReady(true);
           return;
         }
 
-        // Fall back to fresh GPS fix
         const current = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
@@ -50,6 +108,11 @@ export default function DriverHomeScreen() {
             longitude: current.coords.longitude,
             latitudeDelta: 0.005,
             longitudeDelta: 0.005,
+          });
+          setDriverCoords({
+            latitude: current.coords.latitude,
+            longitude: current.coords.longitude,
+            heading: current.coords.heading ?? null,
           });
         }
       } finally {
@@ -63,6 +126,32 @@ export default function DriverHomeScreen() {
     };
   }, []);
 
+  // ── Subscribe to live GPS from location tracker (zero extra subscriptions) ──
+  useEffect(() => {
+    if (!isOnline) return;
+
+    const unsubscribe = addLocationListener(
+      // Throttle UI updates to ~500ms to avoid excessive re-renders
+      (() => {
+        let lastUpdateTs = 0;
+        return (coords: DriverCoords) => {
+          const now = Date.now();
+          if (now - lastUpdateTs < 500) return;
+          lastUpdateTs = now;
+          setDriverCoords(coords);
+        };
+      })(),
+    );
+
+    return unsubscribe;
+  }, [isOnline]);
+
+  // ── Stable callbacks ──
+  const onRegionChangeComplete = useCallback(
+    (newRegion: typeof region) => setRegion(newRegion),
+    [],
+  );
+
   if (!locationReady) {
     return (
       <View style={styles.loading}>
@@ -74,16 +163,53 @@ export default function DriverHomeScreen() {
   return (
     <View style={styles.container}>
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={region}
-        showsUserLocation
+        onRegionChangeComplete={onRegionChangeComplete}
+        showsUserLocation={!isOnline}
         showsMyLocationButton
-      />
-      <OnlineToggle />
+        moveOnMarkerPress={false}
+        loadingEnabled
+      >
+        {/* Car icon marker — shown when driver is online with GPS */}
+        {isOnline && driverCoords ? (
+          <CarMarker
+            latitude={driverCoords.latitude}
+            longitude={driverCoords.longitude}
+            heading={driverCoords.heading}
+          />
+        ) : null}
+
+        {/* Pickup marker — shown when an active ride is set */}
+        {activeRide ? (
+          <PickupMarker
+            latitude={activeRide.pickupLat}
+            longitude={activeRide.pickupLng}
+            title={activeRide.pickupAddress}
+          />
+        ) : null}
+      </MapView>
+
+      {/* Online toggle — hidden during active ride */}
+      {!activeRide ? <OnlineToggle /> : null}
+
+      {/* Active ride bottom card */}
+      {activeRide ? <ActiveRideCard ride={activeRide} /> : null}
+
+      {/* Ride request modal overlays everything */}
+      {incomingRequest ? <RideRequestModal request={incomingRequest} /> : null}
     </View>
   );
 }
+
+const carStyles = StyleSheet.create({
+  icon: {
+    width: CAR_SIZE,
+    height: CAR_SIZE,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {

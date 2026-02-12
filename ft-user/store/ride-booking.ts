@@ -20,6 +20,26 @@ export type FuelFilter = "ANY" | "CNG" | "PETROL";
 export const MAX_STOPS = 4;
 
 // ---------------------------------------------------------------------------
+// Booking flow types
+// ---------------------------------------------------------------------------
+
+export type BookingStatus =
+  | "idle"
+  | "searching"
+  | "accepted"
+  | "no_driver"
+  | "driver_cancelled";
+
+export interface AcceptedDriver {
+  driverName: string;
+  driverLocation: {
+    latitude: number;
+    longitude: number;
+    heading: number | null;
+  } | null;
+}
+
+// ---------------------------------------------------------------------------
 // Store shape
 // ---------------------------------------------------------------------------
 
@@ -49,6 +69,11 @@ interface RideBookingState {
   distanceKm: number | null;
   durationMinutes: number | null;
   currency: string;
+
+  // Booking flow (post-ride-creation)
+  bookingStatus: BookingStatus;
+  activeRideId: string | null;
+  acceptedDriver: AcceptedDriver | null;
 
   // Actions — stops
   setStop: (index: number, location: StopLocation | null) => void;
@@ -81,6 +106,13 @@ interface RideBookingState {
   // Clear only route quote data (used when going back from book-taxi)
   clearRouteQuote: () => void;
 
+  // Actions — booking flow
+  setBookingSearching: (rideId: string) => void;
+  setBookingAccepted: (driver: AcceptedDriver) => void;
+  setBookingNoDriver: () => void;
+  setBookingDriverCancelled: () => void;
+  resetBookingStatus: () => void;
+
   // Reset everything
   reset: () => void;
 }
@@ -88,6 +120,12 @@ interface RideBookingState {
 // ---------------------------------------------------------------------------
 // Initial state
 // ---------------------------------------------------------------------------
+
+const BOOKING_FLOW_INITIAL = {
+  bookingStatus: "idle" as BookingStatus,
+  activeRideId: null as string | null,
+  acceptedDriver: null as AcceptedDriver | null,
+};
 
 const INITIAL_STATE = {
   stops: [null] as (StopLocation | null)[],
@@ -106,6 +144,7 @@ const INITIAL_STATE = {
   distanceKm: null as number | null,
   durationMinutes: null as number | null,
   currency: "MMK",
+  ...BOOKING_FLOW_INITIAL,
 };
 
 // ---------------------------------------------------------------------------
@@ -189,7 +228,30 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
       plusFare: null,
       distanceKm: null,
       durationMinutes: null,
+      ...BOOKING_FLOW_INITIAL,
     });
+  },
+
+  // ── Booking flow actions ──
+
+  setBookingSearching(rideId) {
+    set({ bookingStatus: "searching", activeRideId: rideId });
+  },
+
+  setBookingAccepted(driver) {
+    set({ bookingStatus: "accepted", acceptedDriver: driver });
+  },
+
+  setBookingNoDriver() {
+    set({ bookingStatus: "no_driver" });
+  },
+
+  setBookingDriverCancelled() {
+    set({ bookingStatus: "driver_cancelled" });
+  },
+
+  resetBookingStatus() {
+    set({ ...BOOKING_FLOW_INITIAL });
   },
 
   reset() {

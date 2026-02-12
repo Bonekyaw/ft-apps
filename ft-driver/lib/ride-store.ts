@@ -1,13 +1,65 @@
 import { create } from "zustand";
 
+/** Shape of the incoming ride request payload from Ably. */
+export interface IncomingRideRequest {
+  rideId: string;
+  pickupAddress: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropoffAddress: string;
+  dropoffLat: number;
+  dropoffLng: number;
+  estimatedFare: number;
+  currency: string;
+  vehicleType: string;
+  passengerNote: string | null;
+  pickupPhotoUrl: string | null;
+}
+
+/** Full details of the ride the driver has accepted. */
+export interface ActiveRide {
+  rideId: string;
+  pickupAddress: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropoffAddress: string;
+  dropoffLat: number;
+  dropoffLng: number;
+  totalFare: number;
+  currency: string;
+  vehicleType: string;
+  passengerNote: string | null;
+  pickupPhotoUrl: string | null;
+}
+
 interface RideState {
-  /** The ID of the currently active ride, or null if no ride. */
+  /** The currently accepted ride with full details, or null. */
+  activeRide: ActiveRide | null;
+  /** Convenience getter — the active ride ID (used by location tracker). */
   activeRideId: string | null;
-  /** Set or clear the active ride. Triggers high-frequency Ably tracking. */
-  setActiveRide: (rideId: string | null) => void;
+  /** An incoming ride request from dispatch, or null if none. */
+  incomingRequest: IncomingRideRequest | null;
+  /** Set the active ride with full details. */
+  setActiveRide: (ride: ActiveRide) => void;
+  /** Clear the active ride. */
+  clearActiveRide: () => void;
+  /** Set an incoming ride request (from Ably private channel). */
+  setIncomingRequest: (req: IncomingRideRequest | null) => void;
+  /** Clear the incoming request (after accept/reject/timeout). */
+  clearIncomingRequest: () => void;
 }
 
 export const useRideStore = create<RideState>()((set) => ({
+  activeRide: null,
   activeRideId: null,
-  setActiveRide: (rideId) => set({ activeRideId: rideId }),
+  incomingRequest: null,
+
+  setActiveRide: (ride) =>
+    set({ activeRide: ride, activeRideId: ride.rideId }),
+
+  clearActiveRide: () => set({ activeRide: null, activeRideId: null }),
+
+  setIncomingRequest: (req) => set({ incomingRequest: req }),
+
+  clearIncomingRequest: () => set({ incomingRequest: null }),
 }));

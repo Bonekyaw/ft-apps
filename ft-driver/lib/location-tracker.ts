@@ -8,6 +8,23 @@ const ABLY_THROTTLE_MS = 2_000; // 2 seconds — high-frequency ride tracking
 const REST_THROTTLE_MS = 30_000; // 30 seconds — low-frequency persistence
 const REST_DISTANCE_M = 50; // 50 meters — distance-based persistence trigger
 
+// ── Location listener system (for UI to react to GPS without extra subs) ──
+export interface DriverCoords {
+  latitude: number;
+  longitude: number;
+  heading: number | null;
+}
+type LocationCallback = (coords: DriverCoords) => void;
+const locationListeners = new Set<LocationCallback>();
+
+/** Subscribe to live GPS coordinates. Returns an unsubscribe function. */
+export function addLocationListener(cb: LocationCallback): () => void {
+  locationListeners.add(cb);
+  return () => {
+    locationListeners.delete(cb);
+  };
+}
+
 // ── Module state (singleton — persists across screen navigation) ─────
 let locationSub: Location.LocationSubscription | null = null;
 let lastAblyPublishTs = 0;
@@ -37,6 +54,16 @@ function haversineMeters(
 function handleLocationUpdate(coords: Location.LocationObjectCoords): void {
   const now = Date.now();
   const { latitude, longitude, heading, speed, accuracy } = coords;
+
+  // ── Notify UI listeners (zero-copy, no state overhead) ──
+  if (locationListeners.size > 0) {
+    const payload: DriverCoords = {
+      latitude,
+      longitude,
+      heading: heading ?? null,
+    };
+    for (const cb of locationListeners) cb(payload);
+  }
 
   // ── High-frequency: publish to Ably ride channel (every 2s) ──
   const rideId = currentRideId ?? useRideStore.getState().activeRideId;

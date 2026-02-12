@@ -24,10 +24,15 @@ import {
   fetchRouteQuote,
   uploadPickupPhoto,
   createRide,
+  cancelRide,
+  fetchNearbyDrivers,
   getErrorMessage,
   type SpeedReadingInterval,
+  type NearbyDriver,
 } from "@/lib/api";
 import { decodePolyline } from "@/lib/polyline";
+import { startListening, startPolling, stopListening } from "@/lib/ride-status-listener";
+import { useSession } from "@/lib/auth-client";
 import {
   Colors,
   Brand,
@@ -38,6 +43,8 @@ import {
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTabBarVisibility } from "@/context/tab-bar-context";
 import { useRideBookingStore } from "@/store/ride-booking";
+import BookingStatusOverlay from "@/components/booking/BookingStatusOverlay";
+import { CarMarker } from "@/components/map/CarMarker";
 
 /** Height of the iOS native tab bar (points). Bottom card must sit above it. */
 const IOS_TAB_BAR_HEIGHT = 50;
@@ -52,6 +59,7 @@ export default function BookTaxiScreen() {
   const { t } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
   const { setTabBarHidden } = useTabBarVisibility();
+  const { data: session } = useSession();
   const mapRef = useRef<MapView>(null);
 
   // Hide Android tab bar when this screen is focused
@@ -80,6 +88,9 @@ export default function BookTaxiScreen() {
   const currency = useRideBookingStore((s) => s.currency);
   const clearRouteQuote = useRideBookingStore((s) => s.clearRouteQuote);
   const reset = useRideBookingStore((s) => s.reset);
+  const bookingStatus = useRideBookingStore((s) => s.bookingStatus);
+  const setBookingSearching = useRideBookingStore((s) => s.setBookingSearching);
+  const resetBookingStatus = useRideBookingStore((s) => s.resetBookingStatus);
 
   // ── Local state ──
   const [selectedVehicle, setSelectedVehicle] =
@@ -87,6 +98,8 @@ export default function BookTaxiScreen() {
   const [isLoadingRoute, setIsLoadingRoute] = useState(true);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [isBooking, setIsBooking] = useState(false);
+  const [nearbyDrivers, setNearbyDrivers] = useState<NearbyDriver[]>([]);
+  const driverPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // All filled destination stops (in order)
   const filledStops = useMemo(
@@ -188,17 +201,58 @@ export default function BookTaxiScreen() {
     return () => clearTimeout(timer);
   }, [routeCoords]);
 
+  // ── Poll nearby drivers while searching ──
+  useEffect(() => {
+    if (bookingStatus !== "searching" || !pickup) {
+      // Clear drivers when not searching
+      if (nearbyDrivers.length > 0) setNearbyDrivers([]);
+      if (driverPollRef.current) {
+        clearInterval(driverPollRef.current);
+        driverPollRef.current = null;
+      }
+      return;
+    }
+
+    const poll = () => {
+      void fetchNearbyDrivers(pickup.latitude, pickup.longitude).then(
+        (drivers) => setNearbyDrivers(drivers),
+        () => {}, // silently ignore errors
+      );
+    };
+
+    // Fetch immediately, then every 10s
+    poll();
+    driverPollRef.current = setInterval(poll, 10_000);
+
+    return () => {
+      if (driverPollRef.current) {
+        clearInterval(driverPollRef.current);
+        driverPollRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingStatus, pickup?.latitude, pickup?.longitude]);
+
   // ── Book ride ──
   const handleBook = useCallback(async () => {
     if (!pickup || !finalDestination || !routeQuoteId) return;
     setIsBooking(true);
     try {
+      // 1. Subscribe to Ably FIRST so we don't miss immediate responses
+      //    (e.g., no_driver_found fires instantly when 0 drivers exist)
+      const userId = session?.user?.id;
+      if (userId) {
+        await startListening(userId);
+      }
+
+      // 2. Upload photo if needed
       let photoUrl: string | undefined;
       if (pickupPhotoUri) {
         photoUrl = await uploadPickupPhoto(pickupPhotoUri);
       }
 
-      await createRide({
+      // 3. Create ride — backend dispatches immediately after
+      const ride = await createRide({
         pickupAddress: pickup.address,
         pickupLat: pickup.latitude,
         pickupLng: pickup.longitude,
@@ -211,9 +265,14 @@ export default function BookTaxiScreen() {
         routeQuoteId,
       });
 
-      reset();
-      router.dismissAll();
+      // 4. Enter "searching for driver" state
+      setBookingSearching(ride.id);
+
+      // 5. Start REST polling fallback (catches missed Ably messages)
+      startPolling(ride.id);
     } catch (err) {
+      // If ride creation fails, clean up Ably listener
+      void stopListening();
       Alert.alert("Error", getErrorMessage(err));
     } finally {
       setIsBooking(false);
@@ -225,8 +284,8 @@ export default function BookTaxiScreen() {
     pickupPhotoUri,
     selectedVehicle,
     pickupNote,
-    reset,
-    router,
+    session,
+    setBookingSearching,
   ]);
 
   // ── Go back: clear stale route quote so re-entry fetches fresh data ──
@@ -235,11 +294,40 @@ export default function BookTaxiScreen() {
     router.back();
   }, [clearRouteQuote, router]);
 
-  // ── Fare formatting ──
-  const formatFare = (amount: number | null): string => {
-    if (amount == null) return "—";
-    return `${amount.toLocaleString()} ${currency}`;
-  };
+  // ── Booking overlay handlers ──
+  const handleBookingCancel = useCallback(() => {
+    const rideId = useRideBookingStore.getState().activeRideId;
+    if (rideId) void cancelRide(rideId).catch(() => {});
+    void stopListening();
+    resetBookingStatus();
+  }, [resetBookingStatus]);
+
+  const handleBookingContinue = useCallback(() => {
+    void stopListening();
+    reset();
+    router.dismissAll();
+  }, [reset, router]);
+
+  const handleBookingRetry = useCallback(async () => {
+    resetBookingStatus();
+    await stopListening();
+    void handleBook();
+  }, [resetBookingStatus, handleBook]);
+
+  const handleBookingGoBack = useCallback(() => {
+    void stopListening();
+    reset();
+    router.dismissAll();
+  }, [reset, router]);
+
+  // ── Fare formatting (stable reference) ──
+  const formatFare = useCallback(
+    (amount: number | null): string => {
+      if (amount == null) return "—";
+      return `${amount.toLocaleString()} ${currency}`;
+    },
+    [currency],
+  );
 
   // ── No data guard ──
   if (!pickup || !finalDestination) {
@@ -269,6 +357,8 @@ export default function BookTaxiScreen() {
         showsUserLocation
         showsMyLocationButton={false}
         toolbarEnabled={false}
+        moveOnMarkerPress={false}
+        loadingEnabled
       >
         {/* Origin marker */}
         <Marker
@@ -278,6 +368,7 @@ export default function BookTaxiScreen() {
           }}
           title="Pickup"
           pinColor="#FFB800"
+          tracksViewChanges={false}
         />
 
         {/* Intermediate stop markers */}
@@ -290,6 +381,7 @@ export default function BookTaxiScreen() {
             }}
             title={`Stop ${idx + 1}`}
             pinColor="#FFB800"
+            tracksViewChanges={false}
           />
         ))}
 
@@ -301,6 +393,7 @@ export default function BookTaxiScreen() {
           }}
           title="Destination"
           pinColor="red"
+          tracksViewChanges={false}
         />
 
         {/* Route polyline – traffic-colored segments */}
@@ -310,6 +403,20 @@ export default function BookTaxiScreen() {
             coordinates={seg.coords}
             strokeColor={seg.color}
             strokeWidth={5}
+          />
+        ))}
+
+        {/* Nearby driver car icons (shown while searching) */}
+        {nearbyDrivers.map((driver) => (
+          <CarMarker
+            key={driver.driverId}
+            id={driver.driverId}
+            coordinate={{
+              latitude: driver.latitude,
+              longitude: driver.longitude,
+            }}
+            title={driver.driverName}
+            rotation={driver.heading ?? undefined}
           />
         ))}
       </MapView>
@@ -328,7 +435,8 @@ export default function BookTaxiScreen() {
         <MaterialIcons name="arrow-back" size={22} color={colors.text} />
       </Pressable>
 
-      {/* ── Bottom card ── */}
+      {/* ── Bottom card (hidden when booking is active) ── */}
+      {bookingStatus === "idle" && (
       <View
         style={[
           styles.bottomCard,
@@ -587,6 +695,17 @@ export default function BookTaxiScreen() {
           </>
         )}
       </View>
+      )}
+
+      {/* ── Booking status bottom sheet ── */}
+      {bookingStatus !== "idle" && (
+        <BookingStatusOverlay
+          onCancel={handleBookingCancel}
+          onContinue={handleBookingContinue}
+          onRetry={handleBookingRetry}
+          onGoBack={handleBookingGoBack}
+        />
+      )}
     </View>
   );
 }
