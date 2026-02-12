@@ -188,6 +188,24 @@ export function getErrorMessage(err: unknown): string {
 }
 
 // =========================================================================
+// Driver Location
+// =========================================================================
+
+/**
+ * Send the driver's current location to the backend for persistent storage
+ * (Prisma + PostGIS). Called on a low-frequency schedule (every 30s or 50m).
+ */
+export async function updateDriverLocation(data: {
+  latitude: number;
+  longitude: number;
+  heading?: number;
+  speed?: number;
+  accuracy?: number;
+}): Promise<void> {
+  await api.post("/dispatch/location", data);
+}
+
+// =========================================================================
 // Driver Login Validation
 // =========================================================================
 

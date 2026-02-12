@@ -23,10 +23,21 @@ async function bootstrap() {
     },
     bodyParser: false, // Required for Better Auth (raw body for auth routes)
   });
+
+  // JSON parser that preserves the raw body buffer for /webhooks/ routes
+  // (needed for Ably signature verification via HMAC-SHA256).
+  const jsonWithRawBody = json({
+    verify: (req: Request, _res, buf) => {
+      if (req.originalUrl?.startsWith('/webhooks/')) {
+        (req as Request & { rawBody?: Buffer }).rawBody = buf;
+      }
+    },
+  });
+
   // Parse JSON body only for non-auth routes (e.g. /maps) so POST /maps/autocomplete works
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.originalUrl?.startsWith('/api/auth')) return next();
-    return json()(req, res, next);
+    return jsonWithRawBody(req, res, next);
   });
   await app.listen(process.env.PORT ?? 3000);
 }

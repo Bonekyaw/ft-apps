@@ -144,6 +144,10 @@
   "explore": {
     "searchPlaceholder": "နေရာ သို့မဟုတ် လိပ်စာ ရှာပါ"
   },
+  "status": {
+    "online": "အွန်လိုင်း",
+    "offline": "အော့ဖ်လိုင်း"
+  },
   "modal": {
     "title": "မိုဒယ်",
     "description": "ဤသည်မှာ မိုဒယ်ဖြစ်သည်",

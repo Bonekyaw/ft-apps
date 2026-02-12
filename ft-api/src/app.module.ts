@@ -15,6 +15,7 @@ import { UsersModule } from './users/users.module.js';
 import { ContentModule } from './content/content.module.js';
 import { RidesModule } from './rides/rides.module.js';
 import { DriversModule } from './drivers/drivers.module.js';
+import { DispatchModule } from './dispatch/dispatch.module.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -36,6 +37,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
     ContentModule,
     RidesModule,
     DriversModule,
+    DispatchModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

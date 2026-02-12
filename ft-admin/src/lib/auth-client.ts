@@ -30,6 +30,8 @@ export function isSuperadminRole(role: string | null | undefined): boolean {
 }
 
 /** Only superadmin can view the admin management (Users) page. */
-export function canAccessUserManagement(role: string | null | undefined): boolean {
+export function canAccessUserManagement(
+  role: string | null | undefined,
+): boolean {
   return isSuperadminRole(role);
 }

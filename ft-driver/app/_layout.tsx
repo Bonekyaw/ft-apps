@@ -15,6 +15,9 @@ import {
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTranslation } from "@/lib/i18n";
 import { Brand, Colors } from "@/constants/theme";
+import { closeAblyClient, enterPresence, leavePresence } from "@/lib/ably";
+import { useDriverStatusStore } from "@/lib/driver-status-store";
+import { startTracking, stopTracking } from "@/lib/location-tracker";
 
 function RootStack() {
   const colorScheme = useColorScheme();
@@ -40,12 +43,49 @@ function RootStack() {
   }, [refetch]);
 
   // Auto-sign-out users who are not DRIVER role (e.g. a USER who somehow got a session)
-  const userRole = (session?.user?.role as string | undefined)?.toUpperCase();
+  const userRole = (
+    (session?.user as Record<string, unknown> | undefined)?.role as
+      | string
+      | undefined
+  )?.toUpperCase();
   useEffect(() => {
     if (session && !isPending && userRole && userRole !== "DRIVER") {
+      closeAblyClient();
+      useDriverStatusStore.getState().reset();
       void signOut();
     }
   }, [session, isPending, userRole]);
+
+  // ── Ably presence + GPS tracking on AppState changes ──
+  const userId = session?.user?.id;
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      const { isOnline } = useDriverStatusStore.getState();
+      if (!userId || !isOnline) return;
+
+      if (nextState === "background" || nextState === "inactive") {
+        // Stop GPS tracking and leave presence when backgrounded
+        void stopTracking();
+        void leavePresence();
+      } else if (nextState === "active") {
+        // Resume presence and GPS tracking when foregrounded
+        void enterPresence(userId);
+        void startTracking();
+      }
+    });
+    return () => sub.remove();
+  }, [userId]);
+
+  // ── Clean up Ably on sign-out (session becomes null) ──
+  const prevSessionRef = useRef(session);
+  useEffect(() => {
+    if (prevSessionRef.current && !session) {
+      // Session was just cleared — user signed out
+      closeAblyClient();
+      useDriverStatusStore.getState().reset();
+    }
+    prevSessionRef.current = session;
+  }, [session]);
 
   const isFullyAuthenticated =
     !!session &&
