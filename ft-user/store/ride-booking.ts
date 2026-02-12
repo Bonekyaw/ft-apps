@@ -74,6 +74,7 @@ interface RideBookingState {
   bookingStatus: BookingStatus;
   activeRideId: string | null;
   acceptedDriver: AcceptedDriver | null;
+  skippedDriverUserIds: string[];
 
   // Actions — stops
   setStop: (index: number, location: StopLocation | null) => void;
@@ -111,6 +112,7 @@ interface RideBookingState {
   setBookingAccepted: (driver: AcceptedDriver) => void;
   setBookingNoDriver: () => void;
   setBookingDriverCancelled: () => void;
+  addSkippedDriver: (userId: string) => void;
   resetBookingStatus: () => void;
 
   // Reset everything
@@ -125,6 +127,7 @@ const BOOKING_FLOW_INITIAL = {
   bookingStatus: "idle" as BookingStatus,
   activeRideId: null as string | null,
   acceptedDriver: null as AcceptedDriver | null,
+  skippedDriverUserIds: [] as string[],
 };
 
 const INITIAL_STATE = {
@@ -248,6 +251,14 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
 
   setBookingDriverCancelled() {
     set({ bookingStatus: "driver_cancelled" });
+  },
+
+  addSkippedDriver(userId: string) {
+    set((s) => ({
+      skippedDriverUserIds: s.skippedDriverUserIds.includes(userId)
+        ? s.skippedDriverUserIds
+        : [...s.skippedDriverUserIds, userId],
+    }));
   },
 
   resetBookingStatus() {

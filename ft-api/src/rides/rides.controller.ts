@@ -118,7 +118,7 @@ export class RidesController {
    */
   @Post(':id/skip')
   @HttpCode(HttpStatus.OK)
-  skipRide(@Session() session: UserSession, @Param('id') rideId: string) {
+  async skipRide(@Session() session: UserSession, @Param('id') rideId: string) {
     this.logger.log(`Driver user ${session.user.id} skipping ride ${rideId}`);
     return this.ridesService.skipRide(rideId, session.user.id);
   }

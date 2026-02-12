@@ -24,7 +24,6 @@ import {
   fetchRouteQuote,
   uploadPickupPhoto,
   createRide,
-  cancelRide,
   fetchNearbyDrivers,
   getErrorMessage,
   type SpeedReadingInterval,
@@ -91,6 +90,7 @@ export default function BookTaxiScreen() {
   const bookingStatus = useRideBookingStore((s) => s.bookingStatus);
   const setBookingSearching = useRideBookingStore((s) => s.setBookingSearching);
   const resetBookingStatus = useRideBookingStore((s) => s.resetBookingStatus);
+  const skippedDriverUserIds = useRideBookingStore((s) => s.skippedDriverUserIds);
 
   // ── Local state ──
   const [selectedVehicle, setSelectedVehicle] =
@@ -201,6 +201,61 @@ export default function BookTaxiScreen() {
     return () => clearTimeout(timer);
   }, [routeCoords]);
 
+  // ── Zoom to pickup when searching begins ──
+  useEffect(() => {
+    if (bookingStatus === "searching" && pickup) {
+      mapRef.current?.animateToRegion(
+        {
+          latitude: pickup.latitude,
+          longitude: pickup.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        600,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingStatus]);
+
+  // ── Auto-return when no_driver or driver_cancelled ──
+  useEffect(() => {
+    if (bookingStatus === "no_driver") {
+      void stopListening();
+      Alert.alert(
+        t("bookTaxi.noDriverFound"),
+        t("bookTaxi.noDriverMessage"),
+        [{ text: t("auth.ok"), onPress: () => resetBookingStatus() }],
+      );
+    } else if (bookingStatus === "driver_cancelled") {
+      void stopListening();
+      Alert.alert(
+        t("bookTaxi.driverCancelledTitle"),
+        t("bookTaxi.driverCancelledMessage"),
+        [{ text: t("auth.ok"), onPress: () => resetBookingStatus() }],
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingStatus]);
+
+  // ── Restore map to route when returning to idle from a non-idle state ──
+  const prevBookingStatusRef = useRef(bookingStatus);
+  useEffect(() => {
+    if (
+      prevBookingStatusRef.current !== "idle" &&
+      bookingStatus === "idle" &&
+      routeCoords.length >= 2
+    ) {
+      const timer = setTimeout(() => {
+        mapRef.current?.fitToCoordinates(routeCoords, {
+          edgePadding: { top: 80, right: 60, bottom: 300, left: 60 },
+          animated: true,
+        });
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+    prevBookingStatusRef.current = bookingStatus;
+  }, [bookingStatus, routeCoords]);
+
   // ── Poll nearby drivers while searching ──
   useEffect(() => {
     if (bookingStatus !== "searching" || !pickup) {
@@ -295,26 +350,7 @@ export default function BookTaxiScreen() {
   }, [clearRouteQuote, router]);
 
   // ── Booking overlay handlers ──
-  const handleBookingCancel = useCallback(() => {
-    const rideId = useRideBookingStore.getState().activeRideId;
-    if (rideId) void cancelRide(rideId).catch(() => {});
-    void stopListening();
-    resetBookingStatus();
-  }, [resetBookingStatus]);
-
   const handleBookingContinue = useCallback(() => {
-    void stopListening();
-    reset();
-    router.dismissAll();
-  }, [reset, router]);
-
-  const handleBookingRetry = useCallback(async () => {
-    resetBookingStatus();
-    await stopListening();
-    void handleBook();
-  }, [resetBookingStatus, handleBook]);
-
-  const handleBookingGoBack = useCallback(() => {
     void stopListening();
     reset();
     router.dismissAll();
@@ -360,7 +396,7 @@ export default function BookTaxiScreen() {
         moveOnMarkerPress={false}
         loadingEnabled
       >
-        {/* Origin marker */}
+        {/* Origin marker (always visible) */}
         <Marker
           coordinate={{
             latitude: pickup.latitude,
@@ -371,54 +407,61 @@ export default function BookTaxiScreen() {
           tracksViewChanges={false}
         />
 
-        {/* Intermediate stop markers */}
-        {filledStops.slice(0, -1).map((stop, idx) => (
-          <Marker
-            key={`waypoint-${idx}`}
-            coordinate={{
-              latitude: stop.latitude,
-              longitude: stop.longitude,
-            }}
-            title={`Stop ${idx + 1}`}
-            pinColor="#FFB800"
-            tracksViewChanges={false}
-          />
-        ))}
+        {/* Route markers + polyline — only shown when idle */}
+        {bookingStatus === "idle" && (
+          <>
+            {/* Intermediate stop markers */}
+            {filledStops.slice(0, -1).map((stop, idx) => (
+              <Marker
+                key={`waypoint-${idx}`}
+                coordinate={{
+                  latitude: stop.latitude,
+                  longitude: stop.longitude,
+                }}
+                title={`Stop ${idx + 1}`}
+                pinColor="#FFB800"
+                tracksViewChanges={false}
+              />
+            ))}
 
-        {/* Final destination marker */}
-        <Marker
-          coordinate={{
-            latitude: finalDestination.latitude,
-            longitude: finalDestination.longitude,
-          }}
-          title="Destination"
-          pinColor="red"
-          tracksViewChanges={false}
-        />
+            {/* Final destination marker */}
+            <Marker
+              coordinate={{
+                latitude: finalDestination.latitude,
+                longitude: finalDestination.longitude,
+              }}
+              title="Destination"
+              pinColor="red"
+              tracksViewChanges={false}
+            />
 
-        {/* Route polyline – traffic-colored segments */}
-        {trafficSegments.map((seg) => (
-          <Polyline
-            key={seg.key}
-            coordinates={seg.coords}
-            strokeColor={seg.color}
-            strokeWidth={5}
-          />
-        ))}
+            {/* Route polyline – traffic-colored segments */}
+            {trafficSegments.map((seg) => (
+              <Polyline
+                key={seg.key}
+                coordinates={seg.coords}
+                strokeColor={seg.color}
+                strokeWidth={5}
+              />
+            ))}
+          </>
+        )}
 
-        {/* Nearby driver car icons (shown while searching) */}
-        {nearbyDrivers.map((driver) => (
-          <CarMarker
-            key={driver.driverId}
-            id={driver.driverId}
-            coordinate={{
-              latitude: driver.latitude,
-              longitude: driver.longitude,
-            }}
-            title={driver.driverName}
-            rotation={driver.heading ?? undefined}
-          />
-        ))}
+        {/* Nearby driver car icons (shown while searching, filtered) */}
+        {nearbyDrivers
+          .filter((d) => !skippedDriverUserIds.includes(d.userId))
+          .map((driver) => (
+            <CarMarker
+              key={driver.driverId}
+              id={driver.driverId}
+              coordinate={{
+                latitude: driver.latitude,
+                longitude: driver.longitude,
+              }}
+              title={driver.driverName}
+              rotation={driver.heading ?? undefined}
+            />
+          ))}
       </MapView>
 
       {/* ── Back button ── */}
@@ -697,14 +740,9 @@ export default function BookTaxiScreen() {
       </View>
       )}
 
-      {/* ── Booking status bottom sheet ── */}
-      {bookingStatus !== "idle" && (
-        <BookingStatusOverlay
-          onCancel={handleBookingCancel}
-          onContinue={handleBookingContinue}
-          onRetry={handleBookingRetry}
-          onGoBack={handleBookingGoBack}
-        />
+      {/* ── Booking status bottom sheet (searching + accepted only) ── */}
+      {(bookingStatus === "searching" || bookingStatus === "accepted") && (
+        <BookingStatusOverlay onContinue={handleBookingContinue} />
       )}
     </View>
   );

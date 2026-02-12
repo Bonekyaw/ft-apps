@@ -296,8 +296,23 @@ export class RidesService {
   // Skip ride — driver declines, ride stays PENDING for others
   // ──────────────────────────────────────────────────────────
 
-  skipRide(rideId: string, driverUserId: string) {
+  async skipRide(rideId: string, driverUserId: string) {
     this.logger.log(`Driver user ${driverUserId} skipped ride ${rideId}`);
+
+    // Notify the rider so their map can remove this driver's car icon
+    const ride = await this.prisma.ride.findUnique({
+      where: { id: rideId },
+      select: { passengerId: true },
+    });
+
+    if (ride) {
+      void this.publisher.publish(
+        `rider:${ride.passengerId}`,
+        'driver_skipped',
+        { rideId, driverUserId },
+      );
+    }
+
     return { rideId, skipped: true };
   }
 

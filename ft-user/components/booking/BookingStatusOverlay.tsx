@@ -18,18 +18,10 @@ import { Brand, BorderRadius, FontSize, Spacing } from "@/constants/theme";
 const IOS_TAB_BAR_HEIGHT = 50;
 
 interface Props {
-  onCancel: () => void;
   onContinue: () => void;
-  onRetry: () => void;
-  onGoBack: () => void;
 }
 
-export default function BookingStatusOverlay({
-  onCancel: _onCancel,
-  onContinue,
-  onRetry,
-  onGoBack,
-}: Props) {
+export default function BookingStatusOverlay({ onContinue }: Props) {
   const { t } = useTranslation();
   const bookingStatus = useRideBookingStore((s) => s.bookingStatus);
   const acceptedDriver = useRideBookingStore((s) => s.acceptedDriver);
@@ -38,7 +30,7 @@ export default function BookingStatusOverlay({
   const slideAnim = useRef(new Animated.Value(300)).current;
 
   useEffect(() => {
-    if (bookingStatus === "idle") return;
+    if (bookingStatus !== "searching" && bookingStatus !== "accepted") return;
     slideAnim.setValue(300);
     Animated.spring(slideAnim, {
       toValue: 0,
@@ -48,7 +40,8 @@ export default function BookingStatusOverlay({
     }).start();
   }, [bookingStatus, slideAnim]);
 
-  if (bookingStatus === "idle") return null;
+  if (bookingStatus !== "searching" && bookingStatus !== "accepted")
+    return null;
 
   const bottomOffset = Platform.OS === "ios" ? IOS_TAB_BAR_HEIGHT : 0;
 
@@ -73,14 +66,6 @@ export default function BookingStatusOverlay({
           t={t}
           onContinue={onContinue}
         />
-      )}
-
-      {bookingStatus === "no_driver" && (
-        <NoDriverContent t={t} onRetry={onRetry} onGoBack={onGoBack} />
-      )}
-
-      {bookingStatus === "driver_cancelled" && (
-        <DriverCancelledContent t={t} onRetry={onRetry} onGoBack={onGoBack} />
       )}
     </Animated.View>
   );
@@ -309,84 +294,6 @@ const AcceptedContent = memo(function AcceptedContent({
   );
 });
 
-// ── No Driver ──────────────────────────────────────────────
-const NoDriverContent = memo(function NoDriverContent({
-  t,
-  onRetry,
-  onGoBack,
-}: {
-  t: (key: string) => string;
-  onRetry: () => void;
-  onGoBack: () => void;
-}) {
-  return (
-    <View style={styles.contentCenter}>
-      <View style={styles.errorIcon}>
-        <MaterialIcons name="no-transfer" size={40} color="#94A3B8" />
-      </View>
-      <Text style={styles.title}>{t("bookTaxi.noDriverFound")}</Text>
-      <Text style={styles.subtitle}>{t("bookTaxi.noDriverMessage")}</Text>
-      <View style={styles.buttonRow}>
-        <Pressable
-          onPress={onRetry}
-          style={[styles.button, styles.primaryButton, styles.flex1]}
-        >
-          <MaterialIcons name="refresh" size={18} color={Brand.secondary} />
-          <Text style={styles.primaryButtonText}>
-            {t("bookTaxi.tryAgain")}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={onGoBack}
-          style={[styles.button, styles.cancelButton, styles.flex1]}
-        >
-          <Text style={styles.cancelButtonText}>{t("bookTaxi.goBack")}</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-});
-
-// ── Driver Cancelled ────────────────────────────────────────
-const DriverCancelledContent = memo(function DriverCancelledContent({
-  t,
-  onRetry,
-  onGoBack,
-}: {
-  t: (key: string) => string;
-  onRetry: () => void;
-  onGoBack: () => void;
-}) {
-  return (
-    <View style={styles.contentCenter}>
-      <View style={styles.errorIcon}>
-        <MaterialIcons name="cancel" size={40} color="#EF4444" />
-      </View>
-      <Text style={styles.title}>{t("bookTaxi.driverCancelledTitle")}</Text>
-      <Text style={styles.subtitle}>
-        {t("bookTaxi.driverCancelledMessage")}
-      </Text>
-      <View style={styles.buttonRow}>
-        <Pressable
-          onPress={onRetry}
-          style={[styles.button, styles.primaryButton, styles.flex1]}
-        >
-          <MaterialIcons name="refresh" size={18} color={Brand.secondary} />
-          <Text style={styles.primaryButtonText}>
-            {t("bookTaxi.tryAgain")}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={onGoBack}
-          style={[styles.button, styles.cancelButton, styles.flex1]}
-        >
-          <Text style={styles.cancelButtonText}>{t("bookTaxi.goBack")}</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-});
-
 // ── Styles ─────────────────────────────────────────────────
 
 const RADAR_SIZE = 70;
@@ -450,7 +357,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
 
-  // Centered layout for accepted / no_driver / driver_cancelled
+  // Centered layout for accepted
   contentCenter: {
     alignItems: "center",
     gap: Spacing.sm,
@@ -497,23 +404,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
 
-  // Error / no driver
-  errorIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#F1F5F9",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
   // Buttons
-  buttonRow: {
-    flexDirection: "row",
-    gap: Spacing.sm,
-    width: "100%",
-    marginTop: Spacing.xs,
-  },
   button: {
     flexDirection: "row",
     justifyContent: "center",
@@ -523,23 +414,12 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     gap: 6,
   },
-  flex1: {
-    flex: 1,
-  },
   primaryButton: {
     backgroundColor: Brand.primary,
   },
   primaryButtonText: {
     color: Brand.secondary,
     fontWeight: "700",
-    fontSize: FontSize.md,
-  },
-  cancelButton: {
-    backgroundColor: "#F1F5F9",
-  },
-  cancelButtonText: {
-    color: "#64748B",
-    fontWeight: "600",
     fontSize: FontSize.md,
   },
 });
