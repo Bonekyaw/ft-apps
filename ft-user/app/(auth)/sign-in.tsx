@@ -31,6 +31,7 @@ import {
   type SignInFormValues,
 } from "@/lib/validations";
 import { authClient } from "@/lib/auth-client";
+import { validateUserLogin, getErrorMessage } from "@/lib/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function SignInScreen() {
@@ -57,6 +58,18 @@ export default function SignInScreen() {
 
   const onSignIn = async (data: SignInFormValues) => {
     setLoading(true);
+
+    // 1) Validate the email is a rider account before sending credentials
+    try {
+      await validateUserLogin(data.email);
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      Alert.alert(t("auth.errors.signInFailed"), message);
+      setLoading(false);
+      return;
+    }
+
+    // 2) Email is valid — proceed with sign-in
     try {
       const result = await authClient.signIn.email({
         email: data.email,

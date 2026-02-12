@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -17,9 +18,51 @@ import {
 } from '@thallesp/nestjs-better-auth';
 import { PrismaService } from '../prisma.service.js';
 
+const ADMIN_ROLES = ['ADMIN', 'MANAGER', 'OPERATION', 'SUPERADMIN'];
+
 @Controller('user')
 export class UsersController {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Public endpoint – validates whether an email is eligible for rider login.
+   * Called by the ft-user app BEFORE sign-in / forgot-password to give clear
+   * error messages and avoid sending OTPs to ineligible accounts.
+   */
+  @Post('validate-login')
+  @AllowAnonymous()
+  async validateLogin(@Body() body: { email: string }) {
+    const email = body.email?.trim().toLowerCase();
+    if (!email) {
+      throw new BadRequestException('Email is required.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { role: true },
+    });
+
+    if (!user) {
+      // Allow — new users can sign up; existing flow handles "invalid credentials"
+      return { eligible: true };
+    }
+
+    const role = typeof user.role === 'string' ? user.role.toUpperCase() : '';
+
+    if (role === 'DRIVER') {
+      throw new BadRequestException(
+        'This account is registered as a driver. Please use the Family Driver app.',
+      );
+    }
+
+    if (ADMIN_ROLES.includes(role)) {
+      throw new BadRequestException(
+        'This account is for admin access only. Please use the admin dashboard.',
+      );
+    }
+
+    return { eligible: true };
+  }
 
   @Get('me')
   getProfile(@Session() session: UserSession) {

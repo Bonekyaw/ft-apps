@@ -30,6 +30,7 @@ import {
   type ResetPasswordFormValues,
 } from "@/lib/validations";
 import { emailOtp } from "@/lib/auth-client";
+import { validateUserLogin, getErrorMessage } from "@/lib/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 const OTP_LENGTH = 6;
@@ -143,6 +144,17 @@ export default function ResetPasswordScreen() {
   const handleResendOtp = async () => {
     if (!canResend || !email) return;
     setResendLoading(true);
+
+    // Re-validate eligibility before resending OTP
+    try {
+      await validateUserLogin(email);
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      Alert.alert(t("auth.errors.failedToResend"), message);
+      setResendLoading(false);
+      return;
+    }
+
     try {
       const result = await emailOtp.requestPasswordReset({ email });
       if (result.error) {

@@ -30,6 +30,7 @@ import {
   type ForgotPasswordFormValues,
 } from "@/lib/validations";
 import { emailOtp } from "@/lib/auth-client";
+import { validateUserLogin, getErrorMessage } from "@/lib/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function ForgotPasswordScreen() {
@@ -46,9 +47,22 @@ export default function ForgotPasswordScreen() {
 
   const onSubmit = async (data: ForgotPasswordFormValues) => {
     setLoading(true);
+    const trimmedEmail = data.email.trim().toLowerCase();
+
+    // 1) Validate the email is a rider account before sending reset OTP
+    try {
+      await validateUserLogin(trimmedEmail);
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      Alert.alert(t("auth.errors.error"), message);
+      setLoading(false);
+      return;
+    }
+
+    // 2) Email is valid — request the password reset OTP
     try {
       const result = await emailOtp.requestPasswordReset({
-        email: data.email.trim(),
+        email: trimmedEmail,
       });
 
       if (result.error) {
@@ -61,7 +75,7 @@ export default function ForgotPasswordScreen() {
 
       router.replace({
         pathname: "/(auth)/reset-password",
-        params: { email: data.email.trim() },
+        params: { email: trimmedEmail },
       });
     } catch (error: unknown) {
       const message =

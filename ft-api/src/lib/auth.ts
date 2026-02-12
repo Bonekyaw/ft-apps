@@ -140,9 +140,10 @@ export const auth = betterAuth({
     expo(),
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
+        const trimmedEmail = email.trim().toLowerCase();
+
         // ── Universal safety: block unapproved drivers from receiving sign-in OTPs ──
         if (type === 'sign-in') {
-          const trimmedEmail = email.trim().toLowerCase();
           const user = await prisma.user.findUnique({
             where: { email: trimmedEmail },
             select: { id: true, role: true },
@@ -165,6 +166,22 @@ export const auth = betterAuth({
                       : 'Your driver profile is not active.';
               throw new APIError('FORBIDDEN', { message: msg });
             }
+          }
+        }
+
+        // ── Block forgot-password OTP for driver accounts (drivers use OTP login, not passwords) ──
+        if (type === 'forget-password') {
+          const user = await prisma.user.findUnique({
+            where: { email: trimmedEmail },
+            select: { role: true },
+          });
+          const role = normalizeRole(user?.role);
+
+          if (role === 'DRIVER') {
+            throw new APIError('FORBIDDEN', {
+              message:
+                'Password reset is not available for driver accounts. Drivers sign in using email code only.',
+            });
           }
         }
 

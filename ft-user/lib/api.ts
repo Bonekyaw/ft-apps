@@ -340,3 +340,20 @@ export function getErrorMessage(err: unknown): string {
   }
   return err instanceof Error ? err.message : "Request failed";
 }
+
+// =========================================================================
+// User Login Validation
+// =========================================================================
+
+/**
+ * Validate whether an email is eligible for rider login / password reset.
+ * Call this BEFORE sign-in or forgot-password to give clear error messages
+ * (e.g. "This account is a driver — use the driver app").
+ *
+ * Throws (via axios) with a descriptive `message` if the email is not eligible.
+ */
+export async function validateUserLogin(email: string): Promise<void> {
+  await api.post("/user/validate-login", {
+    email: email.trim().toLowerCase(),
+  });
+}

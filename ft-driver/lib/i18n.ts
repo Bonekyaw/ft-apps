@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import * as Localization from "expo-localization";
 import { I18n } from "i18n-js";
 import { create } from "zustand";
@@ -83,9 +84,16 @@ export { i18n };
 /** Hook for translations and locale. Components re-render when locale changes. */
 export function useTranslation() {
   const locale = useLocaleStore((s) => s.locale);
-  return {
-    t: (key: string, options?: Record<string, string | number>) =>
+  // Stabilize the `t` reference so useMemo/useCallback consumers don't
+  // recompute on every render — only when the locale actually changes.
+  const tFn = useCallback(
+    (key: string, options?: Record<string, string | number>) =>
       i18n.t(key, options as Record<string, unknown>) as string,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [locale],
+  );
+  return {
+    t: tFn,
     locale,
     setLocale: useLocaleStore.getState().setLocale,
   };
