@@ -7,10 +7,7 @@ type Translate = (key: string) => string;
  */
 export function createSignInSchema(t: Translate) {
   return z.object({
-    email: z
-      .string()
-      .min(1, t("auth.errors.emailRequired"))
-      .email(t("auth.errors.emailInvalid")),
+    email: z.email(t("auth.errors.emailInvalid")),
     password: z
       .string()
       .min(1, t("auth.errors.passwordRequired"))
@@ -30,10 +27,7 @@ export function createSignUpSchema(t: Translate) {
         .string()
         .min(1, t("auth.errors.nameRequired"))
         .min(2, t("auth.errors.nameMinLength")),
-      email: z
-        .string()
-        .min(1, t("auth.errors.emailRequired"))
-        .email(t("auth.errors.emailInvalid")),
+      email: z.email(t("auth.errors.emailInvalid")),
       password: z
         .string()
         .min(1, t("auth.errors.passwordRequired"))
@@ -42,7 +36,9 @@ export function createSignUpSchema(t: Translate) {
           /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
           t("auth.errors.passwordStrength"),
         ),
-      confirmPassword: z.string().min(1, t("auth.errors.confirmPasswordRequired")),
+      confirmPassword: z
+        .string()
+        .min(1, t("auth.errors.confirmPasswordRequired")),
     })
     .refine((data) => data.password === data.confirmPassword, {
       message: t("auth.errors.passwordsDoNotMatch"),
@@ -57,10 +53,7 @@ export type SignUpFormValues = z.infer<ReturnType<typeof createSignUpSchema>>;
  */
 export function createForgotPasswordSchema(t: Translate) {
   return z.object({
-    email: z
-      .string()
-      .min(1, t("auth.errors.emailRequired"))
-      .email(t("auth.errors.emailInvalid")),
+    email: z.email(t("auth.errors.emailInvalid")),
   });
 }
 
@@ -82,7 +75,9 @@ export function createResetPasswordSchema(t: Translate) {
           /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
           t("auth.errors.passwordStrength"),
         ),
-      confirmPassword: z.string().min(1, t("auth.errors.confirmPasswordRequired")),
+      confirmPassword: z
+        .string()
+        .min(1, t("auth.errors.confirmPasswordRequired")),
     })
     .refine((data) => data.newPassword === data.confirmPassword, {
       message: t("auth.errors.passwordsDoNotMatch"),

@@ -1,0 +1,151 @@
+{
+  "tabs": {
+    "home": "Home",
+    "profile": "Profile"
+  },
+  "profile": {
+    "title": "Profile",
+    "user": "User",
+    "logOut": "Log out",
+    "language": "Language",
+    "english": "English",
+    "myanmar": "Myanmar"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Family Driver",
+      "subtitle": "Sign in with your registered driver email to continue",
+      "email": "Email",
+      "emailPlaceholder": "Enter your registered email",
+      "sendCode": "Send Sign-in Code",
+      "submit": "Sign In"
+    },
+    "verifyOtp": {
+      "title": "Enter Verification Code",
+      "subtitle": "We've sent a 6-digit code to",
+      "verify": "Sign In",
+      "resendPrompt": "Didn't receive the code?",
+      "resend": "Resend",
+      "sending": "Sending...",
+      "resendIn": "Resend in %{count}s",
+      "helpText": "Check your spam folder if you don't see the email"
+    },
+    "errors": {
+      "emailRequired": "Email is required",
+      "emailInvalid": "Please enter a valid email",
+      "signInFailed": "Sign In Failed",
+      "signInFailedMessage": "Could not send sign-in code. Please check your email and try again.",
+      "error": "Error",
+      "unexpectedError": "An unexpected error occurred",
+      "invalidOtp": "Invalid Code",
+      "invalidOtpMessage": "Please enter the complete 6-digit code.",
+      "emailNotFound": "Email not found. Please contact your administrator.",
+      "verificationFailed": "Verification Failed",
+      "verificationFailedMessage": "Invalid or expired code. Please try again.",
+      "failedToResend": "Failed to Resend",
+      "failedToResendMessage": "Could not resend the code. Please try again.",
+      "otpSent": "Code Sent",
+      "otpSentMessage": "A new sign-in code has been sent to your email.",
+      "pendingApproval": "Your account is pending verification. Please wait for admin approval.",
+      "accountRejected": "Your account has been rejected. Please contact support.",
+      "accountSuspended": "Your driver account has been suspended. Please contact support.",
+      "notDriver": "This app is for drivers only. Use a driver account."
+    },
+    "ok": "OK"
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "getStarted": "Get Started",
+    "slideOf": "%{current} of %{total}",
+    "slide1Title": "Book Your Ride",
+    "slide1Description": "Request a ride in seconds. Enter your destination and we'll connect you with nearby drivers.",
+    "slide2Title": "Track in Real-Time",
+    "slide2Description": "Watch your driver arrive on the map. Know exactly when your ride will reach you.",
+    "slide3Title": "Safe & Verified",
+    "slide3Description": "All drivers are verified and trained. Your safety is our top priority.",
+    "slide4Title": "Easy Payments",
+    "slide4Description": "Pay with cash or card. Transparent pricing with no hidden fees."
+  },
+  "home": {
+    "greeting": "Hello, %{name}",
+    "greetingDefault": "Hello there",
+    "searchPlaceholder": "Where are you going?",
+    "bookRide": "Family Taxi",
+    "bookRideSubtitle": "Book a ride now",
+    "announcements": "Announcements",
+    "noAnnouncements": "No announcements right now",
+    "readMore": "Read more",
+    "promotions": "Promotions"
+  },
+  "destination": {
+    "title": "Set Destination",
+    "stop": "Stop %{number}",
+    "destination": "Destination",
+    "addStop": "Add stop",
+    "removeStop": "Remove",
+    "searchPlaceholder": "Search for a place…",
+    "pinOnMap": "Pin location on map",
+    "recentRides": "Recent Rides",
+    "savedPlaces": "Saved Places",
+    "noRecent": "No recent rides yet",
+    "noSaved": "No saved places yet",
+    "filters": "Preferences",
+    "vehicleType": "Vehicle Type",
+    "vehicleAny": "Any",
+    "vehicleStandard": "Standard",
+    "vehiclePlus": "Taxi Plus",
+    "petFriendly": "Pet Included",
+    "fuelPreference": "Fuel Type",
+    "fuelAny": "Any",
+    "fuelCNG": "Gas (CNG)",
+    "fuelPetrol": "Petrol",
+    "continue": "Continue",
+    "selectAtLeastOne": "Please select at least one destination",
+    "pinOnMapTitle": "Pin on Map",
+    "pinOnMapHint": "Move the map to set a location",
+    "confirmLocation": "Confirm Location",
+    "loadingAddress": "Getting address…"
+  },
+  "pickup": {
+    "title": "Set Pickup",
+    "instructions": "Pickup Instructions",
+    "instructionsPlaceholder": "e.g. Wait at the red gate",
+    "takePhoto": "Take Photo",
+    "choosePhoto": "Choose from Gallery",
+    "removePhoto": "Remove Photo",
+    "confirmBooking": "Confirm Booking",
+    "uploading": "Uploading photo…",
+    "creating": "Creating ride…",
+    "defaultAddress": "Current Location",
+    "searchPlaceholder": "Search pickup location…",
+    "photoHint": "Add a photo to help the driver find you",
+    "cancel": "Cancel"
+  },
+  "bookTaxi": {
+    "title": "Book Taxi",
+    "standardTaxi": "Standard Taxi",
+    "taxiPlus": "Taxi Plus",
+    "plusBadge": "+20%",
+    "distance": "Distance",
+    "duration": "Duration",
+    "book": "Book Taxi",
+    "loadingRoute": "Finding best route…",
+    "routeError": "Could not find a route. Please try again.",
+    "tryAgain": "Try Again",
+    "goBack": "Go Back",
+    "pickupNote": "Pickup Note",
+    "min": "min",
+    "km": "km",
+    "booking": "Booking your ride…",
+    "selectFare": "Select your ride"
+  },
+  "explore": {
+    "searchPlaceholder": "Search for a place or address"
+  },
+  "modal": {
+    "title": "Modal",
+    "description": "This is a modal",
+    "goHome": "Go to home screen"
+  }
+}

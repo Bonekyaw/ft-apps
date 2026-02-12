@@ -12,6 +12,8 @@ const THUMBNAIL_WIDTH = 400;
 const THUMBNAIL_HEIGHT = 400;
 const PICKUP_WIDTH = 800;
 const PICKUP_HEIGHT = 600;
+const DOCUMENT_WIDTH = 1200;
+const DOCUMENT_HEIGHT = 900;
 
 const ALLOWED_MIME = new Set([
   'image/jpeg',
@@ -23,7 +25,7 @@ const ALLOWED_MIME = new Set([
 
 interface OptimizeOptions {
   /** Purpose determines target dimensions. */
-  purpose: 'banner' | 'thumbnail' | 'pickup';
+  purpose: 'banner' | 'thumbnail' | 'pickup' | 'document';
 }
 
 @Injectable()
@@ -103,6 +105,8 @@ export class ImageService {
         return { width: THUMBNAIL_WIDTH, height: THUMBNAIL_HEIGHT };
       case 'pickup':
         return { width: PICKUP_WIDTH, height: PICKUP_HEIGHT };
+      case 'document':
+        return { width: DOCUMENT_WIDTH, height: DOCUMENT_HEIGHT };
       default:
         return { width: BANNER_WIDTH, height: BANNER_HEIGHT };
     }

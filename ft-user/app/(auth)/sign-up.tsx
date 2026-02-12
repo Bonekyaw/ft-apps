@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import * as WebBrowser from "expo-web-browser";
 
 import { Button, Input } from "@/components/ui";
 import {
@@ -30,6 +31,15 @@ import { authClient, emailOtp } from "@/lib/auth-client";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function SignUpScreen() {
+  // Warm up Android Chrome Custom Tabs so the OAuth browser opens in-app
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      WebBrowser.warmUpAsync();
+      return () => {
+        WebBrowser.coolDownAsync();
+      };
+    }
+  }, []);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const { t, locale, setLocale } = useTranslation();

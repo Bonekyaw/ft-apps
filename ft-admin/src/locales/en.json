@@ -24,6 +24,7 @@
     "admin": "Admin",
     "dashboard": "Dashboard",
     "userManagement": "User Management",
+    "driverManagement": "Driver Management",
     "pricing": "Pricing",
     "content": "Content",
     "adminManagement": "Admin Management"
@@ -58,9 +59,9 @@
   },
   "users": {
     "title": "User Management",
-    "description": "Manage riders and drivers. All admins can view this page.",
-    "cardTitle": "Riders & drivers",
-    "cardDescription": "{{count}} user(s) (User and Driver roles only)",
+    "description": "Manage rider accounts. All admins can view this page.",
+    "cardTitle": "Riders",
+    "cardDescription": "{{count}} rider(s)",
     "banUser": "Ban user",
     "unbanUser": "Unban user",
     "revokeSessions": "Revoke all sessions",
@@ -284,5 +285,97 @@
       "saveAnnouncement": "Failed to save announcement",
       "deleteAnnouncement": "Failed to delete announcement"
     }
+  },
+  "drivers": {
+    "title": "Driver Management",
+    "description": "Manage driver accounts, verify documents, and approve or reject drivers.",
+    "createButton": "Add driver",
+    "cardTitle": "Driver accounts",
+    "cardDescription": "{{count}} driver(s)",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "approval": "Approval",
+      "status": "Status",
+      "license": "License",
+      "rides": "Rides",
+      "rating": "Rating",
+      "created": "Created"
+    },
+    "approval": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "suspended": "Suspended"
+    },
+    "driverStatus": {
+      "offline": "Offline",
+      "online": "Online",
+      "onTrip": "On Trip"
+    },
+    "actions": {
+      "viewDetails": "View details",
+      "approve": "Approve",
+      "reject": "Reject",
+      "suspend": "Suspend",
+      "revokeSessions": "Revoke all sessions",
+      "deleteDriver": "Delete driver"
+    },
+    "detail": {
+      "title": "Driver Details",
+      "personalInfo": "Personal Information",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "approvalStatus": "Approval Status",
+      "driverStatus": "Driver Status",
+      "documents": "Documents",
+      "licenseNumber": "License Number",
+      "licenseExpiry": "License Expiry",
+      "nationalId": "National ID (NRC)",
+      "licenseImage": "License Image",
+      "nationalIdImage": "National ID Image",
+      "uploadImage": "Upload Image",
+      "noImage": "No image uploaded",
+      "stats": "Statistics",
+      "totalRides": "Total Rides",
+      "averageRating": "Average Rating",
+      "editInfo": "Edit Information",
+      "licenseNumberPlaceholder": "e.g. 12345678",
+      "licenseExpiryPlaceholder": "YYYY-MM-DD",
+      "nationalIdPlaceholder": "e.g. 12/YAKANA(N)123456"
+    },
+    "create": {
+      "title": "Add Driver",
+      "description": "Create a new driver account. The driver can sign in with email OTP after approval.",
+      "nameLabel": "Name",
+      "namePlaceholder": "Full name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "driver@example.com",
+      "creating": "Creating...",
+      "createButton": "Create Driver"
+    },
+    "dialogs": {
+      "approveTitle": "Approve driver?",
+      "approveMessage": "{{name}} will be able to sign in to the driver app.",
+      "rejectTitle": "Reject driver?",
+      "rejectMessage": "{{name}} will not be able to sign in. You can change this later.",
+      "suspendTitle": "Suspend driver?",
+      "suspendMessage": "{{name}} will be suspended and unable to sign in or receive rides.",
+      "deleteTitle": "Delete driver?",
+      "deleteMessage": "{{name}} and all associated data will be permanently removed. This cannot be undone.",
+      "revokeTitle": "Revoke all sessions?",
+      "revokeMessage": "{{name}} will be signed out from all devices."
+    },
+    "errors": {
+      "failedToLoad": "Failed to load drivers",
+      "failedToCreate": "Failed to create driver",
+      "failedToUpdate": "Failed to update driver",
+      "failedToApprove": "Failed to update approval status",
+      "failedToDelete": "Failed to delete driver",
+      "failedToRevoke": "Failed to revoke sessions",
+      "failedToUpload": "Failed to upload document"
+    },
+    "empty": "No drivers yet. Create the first driver account above."
   }
 }

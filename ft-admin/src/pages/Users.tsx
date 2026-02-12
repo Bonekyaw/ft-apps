@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MoreHorizontalIcon, Trash2Icon, LogOutIcon } from "lucide-react";
 
-const APP_USER_ROLES = ["USER", "DRIVER"] as const;
+const APP_USER_ROLES = ["USER"] as const;
 
 type User = {
   id: string;
@@ -88,7 +88,7 @@ export default function UsersPage() {
       const data = res && typeof res === "object" && "data" in res ? (res as { data: { users?: User[] } }).data : (res as { users?: User[] });
       const all = data?.users ?? [];
       const appUsers = all.filter(
-        (u) => APP_USER_ROLES.includes((u.role ?? "USER").toUpperCase() as "USER" | "DRIVER")
+        (u) => APP_USER_ROLES.includes((u.role ?? "USER").toUpperCase() as "USER")
       );
       setUsers(appUsers);
       setTotal(appUsers.length);

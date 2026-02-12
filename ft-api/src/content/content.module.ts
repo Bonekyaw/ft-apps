@@ -6,5 +6,6 @@ import { PrismaService } from '../prisma.service.js';
 @Module({
   controllers: [ContentController],
   providers: [PrismaService, ImageService],
+  exports: [ImageService],
 })
 export class ContentModule {}

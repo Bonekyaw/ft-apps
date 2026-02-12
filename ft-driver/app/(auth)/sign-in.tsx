@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as WebBrowser from "expo-web-browser";
 
 import { Button, Input } from "@/components/ui";
 import {
@@ -30,37 +29,41 @@ import {
   createSignInSchema,
   type SignInFormValues,
 } from "@/lib/validations";
-import { authClient } from "@/lib/auth-client";
+import { emailOtp } from "@/lib/auth-client";
+import { validateDriverLogin, getErrorMessage } from "@/lib/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function SignInScreen() {
-  // Warm up Android Chrome Custom Tabs so the OAuth browser opens in-app
-  useEffect(() => {
-    if (Platform.OS === "android") {
-      WebBrowser.warmUpAsync();
-      return () => {
-        WebBrowser.coolDownAsync();
-      };
-    }
-  }, []);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const { t, locale, setLocale } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const signInSchema = useMemo(() => createSignInSchema(t), [t]);
   const { control, handleSubmit } = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "" },
   });
 
-  const onSignIn = async (data: SignInFormValues) => {
+  const onSendCode = async (data: SignInFormValues) => {
     setLoading(true);
+    const trimmedEmail = data.email.trim().toLowerCase();
+
     try {
-      const result = await authClient.signIn.email({
-        email: data.email,
-        password: data.password,
+      // 1) Validate the email is an approved driver BEFORE sending OTP
+      await validateDriverLogin(trimmedEmail);
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      Alert.alert(t("auth.errors.signInFailed"), message);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // 2) Email is valid – send the OTP
+      const result = await emailOtp.sendVerificationOtp({
+        email: trimmedEmail,
+        type: "sign-in",
       });
 
       if (result.error) {
@@ -68,6 +71,12 @@ export default function SignInScreen() {
           t("auth.errors.signInFailed"),
           result.error.message || t("auth.errors.signInFailedMessage"),
         );
+      } else {
+        // Navigate to OTP verification with the email
+        router.push({
+          pathname: "/(auth)/verify-otp",
+          params: { email: trimmedEmail },
+        });
       }
     } catch (error: unknown) {
       const message =
@@ -76,26 +85,6 @@ export default function SignInScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    try {
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: "/",
-      });
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : t("auth.errors.googleSignInFailed");
-      Alert.alert(t("auth.errors.error"), message);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleForgotPassword = () => {
-    router.push("/(auth)/forgot-password");
   };
 
   return (
@@ -176,30 +165,6 @@ export default function SignInScreen() {
 
           {/* Form */}
           <View style={styles.form}>
-            {/* Social Login */}
-            <Button
-              title={t("auth.signIn.continueWithGoogle")}
-              onPress={handleGoogleSignIn}
-              variant="social"
-              loading={googleLoading}
-              size="lg"
-              icon={<Ionicons name="logo-google" size={20} color="#DB4437" />}
-              style={styles.googleButton}
-            />
-
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View
-                style={[styles.dividerLine, { backgroundColor: colors.border }]}
-              />
-              <Text style={[styles.dividerText, { color: colors.textMuted }]}>
-                {t("auth.signIn.orContinueWith")}
-              </Text>
-              <View
-                style={[styles.dividerLine, { backgroundColor: colors.border }]}
-              />
-            </View>
-
             <Controller
               control={control}
               name="email"
@@ -223,59 +188,13 @@ export default function SignInScreen() {
               )}
             />
 
-            <Controller
-              control={control}
-              name="password"
-              render={({
-                field: { onChange, onBlur, value },
-                fieldState: { error },
-              }) => (
-                <Input
-                  label={t("auth.signIn.password")}
-                  placeholder={t("auth.signIn.passwordPlaceholder")}
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoComplete="password"
-                  leftIcon="lock-closed-outline"
-                  error={error?.message}
-                  containerStyle={styles.inputCompact}
-                />
-              )}
-            />
-
-            <TouchableOpacity
-              onPress={handleForgotPassword}
-              style={styles.forgotPassword}
-            >
-              <Text
-                style={[styles.forgotPasswordText, { color: Brand.primary }]}
-              >
-                {t("auth.signIn.forgotPassword")}
-              </Text>
-            </TouchableOpacity>
-
             <Button
-              title={t("auth.signIn.submit")}
-              onPress={handleSubmit(onSignIn)}
+              title={t("auth.signIn.sendCode")}
+              onPress={handleSubmit(onSendCode)}
               loading={loading}
               size="lg"
-              style={styles.signInButton}
+              style={styles.sendCodeButton}
             />
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-              {t("auth.signIn.noAccount")}{" "}
-            </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/sign-up")}>
-              <Text style={[styles.linkText, { color: Brand.primary }]}>
-                {t("auth.signIn.signUp")}
-              </Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -317,7 +236,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.xl,
   },
   logoContainer: {
     width: 56,
@@ -335,52 +254,15 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: FontSize.sm,
     textAlign: "center",
+    paddingHorizontal: Spacing.lg,
   },
   form: {
     flex: 1,
   },
   inputCompact: {
+    marginBottom: Spacing.md,
+  },
+  sendCodeButton: {
     marginBottom: Spacing.sm,
-  },
-  forgotPassword: {
-    alignSelf: "flex-end",
-    marginBottom: Spacing.sm,
-    marginTop: -Spacing.xs,
-  },
-  forgotPasswordText: {
-    fontSize: FontSize.sm,
-    fontWeight: "500",
-  },
-  signInButton: {
-    marginBottom: Spacing.sm,
-  },
-  googleButton: {
-    marginBottom: Spacing.sm,
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: Spacing.sm,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    paddingHorizontal: Spacing.sm,
-    fontSize: FontSize.sm,
-  },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: Spacing.sm,
-  },
-  footerText: {
-    fontSize: FontSize.sm,
-  },
-  linkText: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
   },
 });

@@ -7,7 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import "react-native-reanimated";
 
-import { useSession } from "@/lib/auth-client";
+import { useSession, signOut } from "@/lib/auth-client";
 import {
   OnboardingProvider,
   useOnboarding,
@@ -35,8 +35,18 @@ function RootStack() {
     return () => sub.remove();
   }, [refetch]);
 
+  // Auto-sign-out users who are not USER role (e.g. a DRIVER who somehow got a session)
+  const userRole = (session?.user?.role as string | undefined)?.toUpperCase();
+  useEffect(() => {
+    if (session && !isPending && userRole && userRole !== "USER") {
+      void signOut();
+    }
+  }, [session, isPending, userRole]);
+
   const isFullyAuthenticated =
-    !!session && session.user?.emailVerified === true;
+    !!session &&
+    session.user?.emailVerified === true &&
+    userRole === "USER";
   const hasCompletedOnboarding = onboardingComplete === true;
   const isLoading = isPending || isOnboardingLoading;
 

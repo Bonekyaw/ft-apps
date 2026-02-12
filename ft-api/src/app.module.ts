@@ -14,6 +14,7 @@ import { PricingModule } from './pricing/pricing.module.js';
 import { UsersModule } from './users/users.module.js';
 import { ContentModule } from './content/content.module.js';
 import { RidesModule } from './rides/rides.module.js';
+import { DriversModule } from './drivers/drivers.module.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +35,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
     PricingModule,
     ContentModule,
     RidesModule,
+    DriversModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

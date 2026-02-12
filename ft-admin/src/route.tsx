@@ -10,6 +10,7 @@ import UsersPage from "@/pages/Users";
 import AdminUsersPage from "@/pages/AdminUsers";
 import PricingPage from "@/pages/Pricing";
 import ContentPage from "@/pages/Content";
+import DriversPage from "@/pages/Drivers";
 
 export const router = createBrowserRouter([
   {
@@ -38,6 +39,14 @@ export const router = createBrowserRouter([
         element: (
           <AdminGuard>
             <UsersPage />
+          </AdminGuard>
+        ),
+      },
+      {
+        path: "drivers",
+        element: (
+          <AdminGuard>
+            <DriversPage />
           </AdminGuard>
         ),
       },
