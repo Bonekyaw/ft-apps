@@ -65,7 +65,7 @@ export async function subscribeToPrivateChannel(
   // ── 3. Subscribe to incoming ride requests ──
   channel.subscribe("new_ride_request", (message: Ably.Message) => {
     console.log(
-      "[RideListener] ⚡ new_ride_request received:",
+      "[RideListener] new_ride_request received:",
       JSON.stringify(message.data),
     );
 
@@ -75,17 +75,9 @@ export async function subscribeToPrivateChannel(
       return;
     }
 
-    const { incomingRequest } = useRideStore.getState();
-    // Don't overwrite an existing request (driver might be reviewing one)
-    if (incomingRequest) {
-      console.log(
-        `[RideListener] Ignored — already showing request ${incomingRequest.rideId}`,
-      );
-      return;
-    }
-
-    console.log(`[RideListener] Setting incomingRequest for ride ${data.rideId}`);
-    useRideStore.getState().setIncomingRequest(data);
+    // Enqueue: shows immediately if no request is active, otherwise queues it
+    console.log(`[RideListener] Enqueuing ride ${data.rideId}`);
+    useRideStore.getState().enqueueRequest(data);
   });
 
   // ── 4. Subscribe to ride cancelled (another driver accepted or TTL expired) ──
@@ -98,10 +90,8 @@ export async function subscribeToPrivateChannel(
     const data = message.data as { rideId: string } | undefined;
     if (!data?.rideId) return;
 
-    const { incomingRequest } = useRideStore.getState();
-    if (incomingRequest?.rideId === data.rideId) {
-      useRideStore.getState().clearIncomingRequest();
-    }
+    // Removes from the current display or the queue
+    useRideStore.getState().removeRequest(data.rideId);
   });
 
   subscribedChannel = channel;

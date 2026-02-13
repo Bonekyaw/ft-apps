@@ -34,9 +34,9 @@ export default function SignUpScreen() {
   // Warm up Android Chrome Custom Tabs so the OAuth browser opens in-app
   useEffect(() => {
     if (Platform.OS === "android") {
-      WebBrowser.warmUpAsync();
+      WebBrowser.warmUpAsync().catch(() => {});
       return () => {
-        WebBrowser.coolDownAsync();
+        WebBrowser.coolDownAsync().catch(() => {});
       };
     }
   }, []);

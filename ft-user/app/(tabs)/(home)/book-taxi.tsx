@@ -99,8 +99,10 @@ export default function BookTaxiScreen() {
   const currentDispatchDriver = useRideBookingStore((s) => s.currentDispatchDriver);
 
   // ── Local state ──
-  const [selectedVehicle, setSelectedVehicle] =
-    useState<SelectedVehicle>("STANDARD");
+  // Default the fare card to "PLUS" when rider chose "PLUS" in filters
+  const [selectedVehicle, setSelectedVehicle] = useState<SelectedVehicle>(
+    vehicleTypePreference === "PLUS" ? "PLUS" : "STANDARD",
+  );
   const [isLoadingRoute, setIsLoadingRoute] = useState(true);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [isBooking, setIsBooking] = useState(false);

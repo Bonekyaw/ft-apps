@@ -228,7 +228,9 @@ export default function DriverHomeScreen() {
       {activeRide ? <ActiveRideCard ride={activeRide} /> : null}
 
       {/* Ride request modal overlays everything */}
-      {incomingRequest ? <RideRequestModal request={incomingRequest} /> : null}
+      {incomingRequest ? (
+        <RideRequestModal key={incomingRequest.rideId} request={incomingRequest} />
+      ) : null}
     </View>
   );
 }

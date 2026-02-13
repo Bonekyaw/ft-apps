@@ -161,6 +161,17 @@ export async function startListening(userId: string): Promise<void> {
     });
   });
 
+  // ── dispatch_waiting (all rounds exhausted, retrying — clear stale driver name) ──
+  channel.subscribe("dispatch_waiting", (message: Ably.Message) => {
+    const data = message.data as { rideId: string } | undefined;
+    if (!data?.rideId) return;
+
+    const store = useRideBookingStore.getState();
+    if (store.activeRideId && store.activeRideId !== data.rideId) return;
+
+    store.clearCurrentDispatchDriver();
+  });
+
   // ── ride_cancelled_by_driver ──
   channel.subscribe("ride_cancelled_by_driver", (message: Ably.Message) => {
     const data = message.data as { rideId: string } | undefined;

@@ -187,6 +187,55 @@ export class RideDispatchService {
   }
 
   /**
+   * Reset the 15-second driver timeout for a ride.
+   * Called when the driver app actually starts displaying a request
+   * that was queued behind another request. Returns true if the timer
+   * was successfully reset, false if the dispatch already moved past
+   * this driver.
+   */
+  resetDriverTimer(rideId: string, driverUserId: string): boolean {
+    const dispatch = this.activeDispatches.get(rideId);
+    if (!dispatch) return false;
+
+    // Only reset if this driver is still the one being waited on
+    if (dispatch.currentDriverUserId !== driverUserId) {
+      this.logger.log(
+        `Ride ${rideId}: acknowledge from ${driverUserId} ignored — ` +
+          `current driver is ${dispatch.currentDriverUserId ?? 'none'}`,
+      );
+      return false;
+    }
+
+    // Clear the old timer and start a fresh 15-second window
+    if (dispatch.timer) clearTimeout(dispatch.timer);
+
+    this.logger.log(
+      `Ride ${rideId}: timer reset for driver ${driverUserId} (fresh ${DRIVER_TIMEOUT_MS / 1000}s)`,
+    );
+
+    dispatch.timer = setTimeout(() => {
+      dispatch.timer = null;
+
+      this.logger.log(
+        `Ride ${rideId}: driver ${driverUserId} timed out after ${DRIVER_TIMEOUT_MS / 1000}s (reset)`,
+      );
+
+      void this.publisher.publish(
+        `driver:private:${driverUserId}`,
+        'ride_cancelled',
+        { rideId },
+      );
+
+      void this.penalty.recordRejection(driverUserId);
+
+      dispatch.currentDriverUserId = null;
+      void this.notifyNextDriver(rideId);
+    }, DRIVER_TIMEOUT_MS);
+
+    return true;
+  }
+
+  /**
    * Cancel an active dispatch (called when a driver accepts the ride).
    * Clears the pending timer and notifies only the currently-waiting
    * driver (if different from the one who accepted) that the ride is gone.
@@ -351,18 +400,17 @@ export class RideDispatchService {
       );
 
     // 5. Start the 15-second timeout
+    //    NOTE: We intentionally do NOT send ride_cancelled to the driver on
+    //    timeout. The driver app has its own 15-second countdown that handles
+    //    dismissal via skipRide(). Sending ride_cancelled here would destroy
+    //    queued requests from other dispatch pipelines that the driver hasn't
+    //    seen yet (both timers fire at ~T=15s, the first promotes the queued
+    //    request, the second immediately kills it).
     dispatch.timer = setTimeout(() => {
       dispatch.timer = null;
 
       this.logger.log(
         `Ride ${rideId}: driver ${driver.userId} timed out after ${DRIVER_TIMEOUT_MS / 1000}s`,
-      );
-
-      // Tell the timed-out driver the offer expired
-      void this.publisher.publish(
-        `driver:private:${driver.userId}`,
-        'ride_cancelled',
-        { rideId },
       );
 
       // Timeout counts as a rejection for non-VIP penalty tracking.
@@ -399,6 +447,13 @@ export class RideDispatchService {
       // who already saw this ride are never re-notified. The retry only
       // picks up NEW drivers who came online or entered the search radius.
       dispatch.roundIndex = 0;
+
+      // Tell the rider to clear the stale "Contacting X" display
+      void this.publisher.publish(
+        `rider:${dispatch.passengerId}`,
+        'dispatch_waiting',
+        { rideId },
+      );
 
       // Wait before retrying to avoid spamming drivers immediately
       dispatch.timer = setTimeout(() => {

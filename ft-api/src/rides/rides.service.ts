@@ -316,6 +316,15 @@ export class RidesService {
   }
 
   // ──────────────────────────────────────────────────────────
+  // Acknowledge — driver is now actively viewing this request
+  // ──────────────────────────────────────────────────────────
+
+  acknowledgeRide(rideId: string, driverUserId: string) {
+    const reset = this.dispatch.resetDriverTimer(rideId, driverUserId);
+    return { rideId, timerReset: reset };
+  }
+
+  // ──────────────────────────────────────────────────────────
   // Skip ride — driver declines, ride stays PENDING for others
   // ──────────────────────────────────────────────────────────
 

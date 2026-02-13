@@ -246,6 +246,14 @@ export async function acceptRide(rideId: string): Promise<AcceptRideResult> {
 }
 
 /**
+ * Acknowledge that the driver is now actively viewing a ride request.
+ * Resets the backend's 15-second timeout so queued requests get a full window.
+ */
+export async function acknowledgeRide(rideId: string): Promise<void> {
+  await api.post(`/rides/${rideId}/acknowledge`);
+}
+
+/**
  * Skip (reject) a ride request. The ride stays PENDING for other drivers.
  */
 export async function skipRide(rideId: string): Promise<void> {

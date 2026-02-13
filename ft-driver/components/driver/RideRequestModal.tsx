@@ -16,7 +16,7 @@ import {
   type ActiveRide,
 } from "@/lib/ride-store";
 import { setActiveRide as setTrackerActiveRide } from "@/lib/location-tracker";
-import { acceptRide, skipRide, getErrorMessage } from "@/lib/api";
+import { acceptRide, skipRide, acknowledgeRide, getErrorMessage } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { Brand, BorderRadius, FontSize, Spacing } from "@/constants/theme";
 import { showAlert } from "@/lib/alert-store";
@@ -36,6 +36,7 @@ export default function RideRequestModal({ request }: Props) {
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const progressAnim = useRef(new Animated.Value(1)).current;
   const clearIncomingRequest = useRideStore((s) => s.clearIncomingRequest);
+  const clearAllRequests = useRideStore((s) => s.clearAllRequests);
   const setActiveRide = useRideStore((s) => s.setActiveRide);
 
   // ── Haptic alert on mount ────────────────────────────────
@@ -46,6 +47,15 @@ export default function RideRequestModal({ request }: Props) {
     }, 500);
     return () => clearTimeout(timer);
   }, []);
+
+  // ── Acknowledge: tell backend we are NOW viewing this request ──
+  // Resets the backend's 15s timer so queued requests get a full window.
+  useEffect(() => {
+    acknowledgeRide(request.rideId).catch(() => {
+      // Non-critical — if the backend already moved on, the timer
+      // expiry will naturally clear this request via ride_cancelled.
+    });
+  }, [request.rideId]);
 
   // ── Countdown timer ──────────────────────────────────────
   useEffect(() => {
@@ -101,7 +111,8 @@ export default function RideRequestModal({ request }: Props) {
       };
 
       setActiveRide(ride);
-      clearIncomingRequest();
+      // Driver is now ON_TRIP — clear all pending/queued requests
+      clearAllRequests();
 
       // Start high-frequency ride tracking
       void setTrackerActiveRide(request.rideId);

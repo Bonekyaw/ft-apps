@@ -137,6 +137,20 @@ export class RidesController {
   }
 
   /**
+   * POST /rides/:id/acknowledge
+   * Driver tells the backend they are now actively viewing this request.
+   * Resets the 15-second timeout so queued requests get a full window.
+   */
+  @Post(':id/acknowledge')
+  @HttpCode(HttpStatus.OK)
+  async acknowledgeRide(
+    @Session() session: UserSession,
+    @Param('id') rideId: string,
+  ) {
+    return this.ridesService.acknowledgeRide(rideId, session.user.id);
+  }
+
+  /**
    * POST /rides/:id/cancel
    * Cancel an accepted ride. Can be called by the driver or the passenger.
    */

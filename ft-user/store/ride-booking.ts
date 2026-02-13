@@ -123,6 +123,7 @@ interface RideBookingState {
   setBookingDriverCancelled: () => void;
   addSkippedDriver: (userId: string) => void;
   setCurrentDispatchDriver: (info: DispatchDriverInfo) => void;
+  clearCurrentDispatchDriver: () => void;
   resetBookingStatus: () => void;
 
   // Reset everything
@@ -283,6 +284,10 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
 
   setCurrentDispatchDriver(info) {
     set({ currentDispatchDriver: info });
+  },
+
+  clearCurrentDispatchDriver() {
+    set({ currentDispatchDriver: null });
   },
 
   resetBookingStatus() {
