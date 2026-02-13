@@ -29,6 +29,8 @@ interface CreateRideBody {
   passengerNote?: string;
   pickupPhotoUrl?: string;
   routeQuoteId?: string;
+  /** Rider's vehicle type preference from filter chips (null = no filter). */
+  vehicleTypePreference?: string;
   fuelPreference?: string;
   petFriendly?: boolean;
   extraPassengers?: boolean;
@@ -89,6 +91,7 @@ export class RidesController {
       passengerNote: body.passengerNote,
       pickupPhotoUrl: body.pickupPhotoUrl,
       routeQuoteId: body.routeQuoteId,
+      vehicleTypePreference: body.vehicleTypePreference,
       fuelPreference: body.fuelPreference,
       petFriendly: body.petFriendly ?? false,
       extraPassengers: body.extraPassengers ?? false,

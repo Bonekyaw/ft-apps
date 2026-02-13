@@ -39,6 +39,11 @@ export interface AcceptedDriver {
   } | null;
 }
 
+/** Info about the driver currently being offered the ride during dispatch. */
+export interface DispatchDriverInfo {
+  driverName: string;
+}
+
 // ---------------------------------------------------------------------------
 // Store shape
 // ---------------------------------------------------------------------------
@@ -76,6 +81,8 @@ interface RideBookingState {
   activeRideId: string | null;
   acceptedDriver: AcceptedDriver | null;
   skippedDriverUserIds: string[];
+  /** The driver currently being contacted during sequential dispatch. */
+  currentDispatchDriver: DispatchDriverInfo | null;
 
   // Actions — stops
   setStop: (index: number, location: StopLocation | null) => void;
@@ -115,6 +122,7 @@ interface RideBookingState {
   setBookingNoDriver: () => void;
   setBookingDriverCancelled: () => void;
   addSkippedDriver: (userId: string) => void;
+  setCurrentDispatchDriver: (info: DispatchDriverInfo) => void;
   resetBookingStatus: () => void;
 
   // Reset everything
@@ -130,6 +138,7 @@ const BOOKING_FLOW_INITIAL = {
   activeRideId: null as string | null,
   acceptedDriver: null as AcceptedDriver | null,
   skippedDriverUserIds: [] as string[],
+  currentDispatchDriver: null as DispatchDriverInfo | null,
 };
 
 const INITIAL_STATE = {
@@ -249,15 +258,19 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
   },
 
   setBookingAccepted(driver) {
-    set({ bookingStatus: "accepted", acceptedDriver: driver });
+    set({
+      bookingStatus: "accepted",
+      acceptedDriver: driver,
+      currentDispatchDriver: null,
+    });
   },
 
   setBookingNoDriver() {
-    set({ bookingStatus: "no_driver" });
+    set({ bookingStatus: "no_driver", currentDispatchDriver: null });
   },
 
   setBookingDriverCancelled() {
-    set({ bookingStatus: "driver_cancelled" });
+    set({ bookingStatus: "driver_cancelled", currentDispatchDriver: null });
   },
 
   addSkippedDriver(userId: string) {
@@ -266,6 +279,10 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
         ? s.skippedDriverUserIds
         : [...s.skippedDriverUserIds, userId],
     }));
+  },
+
+  setCurrentDispatchDriver(info) {
+    set({ currentDispatchDriver: info });
   },
 
   resetBookingStatus() {

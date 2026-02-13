@@ -50,6 +50,7 @@ interface UpdateDriverDto {
   licenseExpiry?: string;
   nationalId?: string;
   petFriendly?: boolean;
+  isVip?: boolean;
 }
 
 interface UpsertVehicleDto {

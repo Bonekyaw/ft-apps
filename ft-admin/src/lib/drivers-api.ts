@@ -27,6 +27,7 @@ export interface Driver {
   approvalStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
   status: "OFFLINE" | "ONLINE" | "ON_TRIP";
   petFriendly?: boolean;
+  isVip?: boolean;
   licenseNumber?: string | null;
   licenseExpiry?: string | null;
   nationalId?: string | null;
@@ -101,6 +102,7 @@ export async function updateDriver(
     licenseExpiry?: string;
     nationalId?: string;
     petFriendly?: boolean;
+    isVip?: boolean;
   }
 ) {
   const res = await authFetch(`${BASE}/admin/drivers/${id}`, {

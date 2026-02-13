@@ -11,6 +11,7 @@ import { VehicleType } from '../generated/prisma/enums.js';
 import { DriverStatusService } from '../dispatch/driver-status.service.js';
 import { RideDispatchService } from '../dispatch/ride-dispatch.service.js';
 import { AblyPublisherService } from '../dispatch/ably-publisher.service.js';
+import { PenaltyService } from '../dispatch/penalty.service.js';
 
 interface CreateRideInput {
   pickupAddress: string;
@@ -25,6 +26,8 @@ interface CreateRideInput {
   passengerNote?: string;
   pickupPhotoUrl?: string;
   routeQuoteId?: string;
+  /** Rider's vehicle type preference for matching (null = any driver). */
+  vehicleTypePreference?: string;
   fuelPreference?: string;
   petFriendly?: boolean;
   extraPassengers?: boolean;
@@ -39,6 +42,7 @@ export class RidesService {
     private readonly driverStatus: DriverStatusService,
     private readonly dispatch: RideDispatchService,
     private readonly publisher: AblyPublisherService,
+    private readonly penalty: PenaltyService,
   ) {}
 
   /**
@@ -156,6 +160,7 @@ export class RidesService {
       vehicleType: ride.vehicleType,
       passengerNote: passengerNote ?? null,
       pickupPhotoUrl: pickupPhotoUrl ?? null,
+      vehicleTypePreference: input.vehicleTypePreference ?? null,
       fuelPreference: fuelPreference ?? null,
       petFriendly: petFriendly ?? false,
       extraPassengers: extraPassengers ?? false,
@@ -320,6 +325,9 @@ export class RidesService {
     // Mark driver as skipped in active dispatch so they won't be re-notified
     this.dispatch.markDriverSkipped(rideId, driverUserId);
 
+    // Record the rejection for penalty tracking (fire-and-forget)
+    void this.penalty.recordRejection(driverUserId);
+
     // Notify the rider so their map can remove this driver's car icon
     const ride = await this.prisma.ride.findUnique({
       where: { id: rideId },
@@ -393,6 +401,9 @@ export class RidesService {
     if (isDriver) {
       // Set driver back to ONLINE
       await this.driverStatus.setStatusByUserId(userId, 'ONLINE');
+
+      // Penalise: 5-min silence + rating deduction (fire-and-forget)
+      void this.penalty.recordCancellation(userId);
 
       // Notify rider that the driver cancelled
       await this.publisher.publish(

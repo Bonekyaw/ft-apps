@@ -13,16 +13,10 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useRideStore, type ActiveRide } from "@/lib/ride-store";
 import { setActiveRide as setTrackerActiveRide } from "@/lib/location-tracker";
 import { cancelRide, getErrorMessage } from "@/lib/api";
-import { Brand } from "@/constants/theme";
+import { Brand, BorderRadius, FontSize, Spacing } from "@/constants/theme";
 import { useTranslation } from "@/lib/i18n";
 import { showAlert } from "@/lib/alert-store";
 import PhotoViewerModal from "@/components/ui/photo-viewer-modal";
-import {
-  Brand,
-  BorderRadius,
-  FontSize,
-  Spacing,
-} from "@/constants/theme";
 
 interface Props {
   ride: ActiveRide;

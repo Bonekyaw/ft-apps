@@ -323,6 +323,8 @@ export interface CreateRidePayload {
   passengerNote?: string;
   pickupPhotoUrl?: string;
   routeQuoteId?: string;
+  /** Rider's vehicle type preference from filter chips (null/"ANY" = no filter). */
+  vehicleTypePreference?: string;
   fuelPreference?: string;
   petFriendly?: boolean;
   extraPassengers?: boolean;

@@ -218,6 +218,7 @@
     "selectFare": "သင့်ခရီးစဉ်ကို ရွေးပါ",
     "findingDriver": "ယာဉ်မောင်း ရှာဖွေနေပါသည်…",
     "findingDriverMessage": "အနီးဆုံး ယာဉ်မောင်းနှင့် ချိတ်ဆက်နေပါသည်။ စက္ကန့်အနည်းငယ် စောင့်ပါ။",
+    "contactingDriver": "%{name} ကို ဆက်သွယ်နေပါသည်…",
     "driverAccepted": "ယာဉ်မောင်း တွေ့ပြီ!",
     "driverName": "%{name} လာနေပါသည်",
     "noDriverFound": "ယာဉ်မောင်း မရှိပါ",

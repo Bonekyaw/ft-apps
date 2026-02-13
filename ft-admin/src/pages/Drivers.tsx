@@ -232,6 +232,7 @@ function DriverDetailSheet({
   const [vPlate, setVPlate] = useState("");
   const [vCapacity, setVCapacity] = useState("4");
   const [petFriendly, setPetFriendly] = useState(false);
+  const [isVip, setIsVip] = useState(false);
   const [savingVehicle, setSavingVehicle] = useState(false);
 
   const loadDriver = useCallback(async () => {
@@ -259,6 +260,7 @@ function DriverDetailSheet({
         setVYear(""); setVColor(""); setVPlate(""); setVCapacity("4");
       }
       setPetFriendly(d.petFriendly ?? false);
+      setIsVip(d.isVip ?? false);
     } catch {
       // silent
     } finally {
@@ -320,8 +322,8 @@ function DriverDetailSheet({
         plateNumber: vPlate.trim(),
         capacity: Number(vCapacity) || 4,
       });
-      // Also save petFriendly on driver
-      await updateDriver(driverId, { petFriendly });
+      // Also save petFriendly + VIP on driver
+      await updateDriver(driverId, { petFriendly, isVip });
       setVehicleEditing(false);
       await loadDriver();
       onUpdated();
@@ -648,6 +650,10 @@ function DriverDetailSheet({
                     <input type="checkbox" id="petFriendly" title="Pet friendly" checked={petFriendly} onChange={(e) => setPetFriendly(e.target.checked)} className="h-4 w-4 rounded border-input" />
                     <Label htmlFor="petFriendly">{t("drivers.detail.petFriendly")}</Label>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="isVip" title="VIP driver" checked={isVip} onChange={(e) => setIsVip(e.target.checked)} className="h-4 w-4 rounded border-input" />
+                    <Label htmlFor="isVip">{t("drivers.detail.vipDriver")}</Label>
+                  </div>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleSaveVehicle} disabled={savingVehicle || !vMake.trim() || !vPlate.trim()}>
                       {savingVehicle ? t("common.saving") : t("common.update")}
@@ -694,6 +700,10 @@ function DriverDetailSheet({
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">{t("drivers.detail.petFriendly")}</dt>
                     <dd>{driver.petFriendly ? "Yes" : "No"}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t("drivers.detail.vipDriver")}</dt>
+                    <dd>{driver.isVip ? "Yes" : "No"}</dd>
                   </div>
                 </dl>
               ) : (

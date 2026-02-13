@@ -201,6 +201,19 @@ model Driver {
   // Preferences
   petFriendly Boolean @default(false)
 
+  // Denormalized from Vehicle for single-table matching queries
+  vehicleType   VehicleType?
+  fuelType      FuelType?
+  maxPassengers Int          @default(4)
+
+  // VIP (admin-managed)
+  isVip Boolean @default(false)
+
+  // Penalty system
+  rejectionCount     Int       @default(0)
+  penaltyUntil       DateTime?
+  lastPenaltyMinutes Int       @default(0)
+
   // Stats
   totalRides    Int     @default(0)
   totalEarnings Decimal @default(0) @db.Decimal(10, 2)
@@ -291,6 +304,9 @@ model Ride {
   fuelPreference  String?
   petFriendly     Boolean @default(false)
   extraPassengers Boolean @default(false)
+
+  // Dispatch tracking (persisted for restart resilience)
+  notifiedDriverIds String[] @default([])
 
   // Pickup location
   pickupAddress  String

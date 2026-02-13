@@ -149,6 +149,10 @@ const SearchingContent = memo(function SearchingContent({
 }: {
   t: (key: string) => string;
 }) {
+  const currentDispatchDriver = useRideBookingStore(
+    (s) => s.currentDispatchDriver,
+  );
+
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -189,15 +193,12 @@ const SearchingContent = memo(function SearchingContent({
 
   return (
     <View style={styles.searchingRow}>
-      {/* Compact radar + icon */}
+      {/* Compact radar + taxi icon */}
       <View style={styles.radarContainer}>
         <RadarRing delay={0} duration={1800} size={RADAR_SIZE} />
         <RadarRing delay={600} duration={1800} size={RADAR_SIZE} />
         <Animated.View
-          style={[
-            styles.iconCircle,
-            { transform: [{ scale: pulseAnim }] },
-          ]}
+          style={[styles.iconCircle, { transform: [{ scale: pulseAnim }] }]}
         >
           <MaterialIcons name="local-taxi" size={24} color="#fff" />
         </Animated.View>
@@ -206,9 +207,20 @@ const SearchingContent = memo(function SearchingContent({
       {/* Text + dots */}
       <View style={styles.searchingTextCol}>
         <Text style={styles.title}>{t("bookTaxi.findingDriver")}</Text>
-        <Text style={styles.subtitle} numberOfLines={2}>
-          {t("bookTaxi.findingDriverMessage")}
-        </Text>
+
+        {/* Show which driver is being contacted */}
+        {currentDispatchDriver ? (
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {t("bookTaxi.contactingDriver", {
+              name: currentDispatchDriver.driverName,
+            })}
+          </Text>
+        ) : (
+          <Text style={styles.subtitle} numberOfLines={2}>
+            {t("bookTaxi.findingDriverMessage")}
+          </Text>
+        )}
+
         <View style={styles.dotsRow}>
           {[0, 1, 2].map((i) => (
             <DotIndicator key={i} index={i} anim={dotAnim} />
@@ -356,7 +368,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
-
   // Centered layout for accepted
   contentCenter: {
     alignItems: "center",

@@ -218,6 +218,7 @@
     "selectFare": "Select your ride",
     "findingDriver": "Finding your driver…",
     "findingDriverMessage": "We're connecting you with the nearest available driver. This usually takes a few seconds.",
+    "contactingDriver": "Contacting %{name}…",
     "driverAccepted": "Driver Found!",
     "driverName": "%{name} is on the way",
     "noDriverFound": "No Drivers Available",

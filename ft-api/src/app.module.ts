@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -22,6 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    ScheduleModule.forRoot(),
     I18nModule.forRoot({
       fallbackLanguage: 'en',
       loaderOptions: {

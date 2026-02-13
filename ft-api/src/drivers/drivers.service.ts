@@ -91,6 +91,7 @@ export class DriversService {
       approvalStatus: d.approvalStatus,
       status: d.status,
       petFriendly: d.petFriendly,
+      isVip: d.isVip,
       licenseNumber: d.licenseNumber,
       licenseExpiry: d.licenseExpiry,
       nationalId: d.nationalId,
@@ -135,6 +136,7 @@ export class DriversService {
       approvalStatus: driver.approvalStatus,
       status: driver.status,
       petFriendly: driver.petFriendly,
+      isVip: driver.isVip,
       licenseNumber: driver.licenseNumber,
       licenseExpiry: driver.licenseExpiry,
       nationalId: driver.nationalId,
@@ -179,6 +181,7 @@ export class DriversService {
       licenseExpiry?: string;
       nationalId?: string;
       petFriendly?: boolean;
+      isVip?: boolean;
     },
   ) {
     const driver = await this.prisma.driver.findUnique({ where: { id } });
@@ -199,6 +202,9 @@ export class DriversService {
         ...(data.petFriendly !== undefined && {
           petFriendly: data.petFriendly,
         }),
+        ...(data.isVip !== undefined && {
+          isVip: data.isVip,
+        }),
       },
       include: { user: { select: { name: true, email: true } } },
     });
@@ -211,6 +217,7 @@ export class DriversService {
       licenseExpiry: updated.licenseExpiry,
       nationalId: updated.nationalId,
       petFriendly: updated.petFriendly,
+      isVip: updated.isVip,
     };
   }
 
@@ -269,6 +276,16 @@ export class DriversService {
         color: data.color,
         plateNumber: data.plateNumber,
         capacity: data.capacity ?? 4,
+      },
+    });
+
+    // Sync denormalized fields on the Driver record for single-table matching
+    await this.prisma.driver.update({
+      where: { id: driverId },
+      data: {
+        vehicleType: data.type,
+        fuelType: data.fuelType ?? null,
+        maxPassengers: data.capacity ?? 4,
       },
     });
 

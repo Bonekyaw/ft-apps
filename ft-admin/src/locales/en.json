@@ -369,6 +369,7 @@
       "plateNumber": "Plate Number",
       "capacity": "Capacity",
       "petFriendly": "Pet Friendly",
+      "vipDriver": "VIP Driver",
       "noVehicle": "No vehicle assigned"
     },
     "create": {

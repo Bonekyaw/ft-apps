@@ -142,6 +142,25 @@ export async function startListening(userId: string): Promise<void> {
     store.addSkippedDriver(data.driverUserId);
   });
 
+  // ── dispatch_progress (sequential waterfall — current driver being contacted) ──
+  channel.subscribe("dispatch_progress", (message: Ably.Message) => {
+    const data = message.data as
+      | {
+          rideId: string;
+          driverName: string;
+        }
+      | undefined;
+
+    if (!data?.rideId) return;
+
+    const store = useRideBookingStore.getState();
+    if (store.activeRideId && store.activeRideId !== data.rideId) return;
+
+    store.setCurrentDispatchDriver({
+      driverName: data.driverName,
+    });
+  });
+
   // ── ride_cancelled_by_driver ──
   channel.subscribe("ride_cancelled_by_driver", (message: Ably.Message) => {
     const data = message.data as { rideId: string } | undefined;

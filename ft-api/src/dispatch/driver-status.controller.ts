@@ -114,6 +114,17 @@ export class DriverStatusController {
       limit,
     );
 
-    return { count: drivers.length, drivers };
+    // Strip VIP info — not exposed to riders
+    const sanitized = drivers.map(({ driverId, userId, driverName, latitude, longitude, heading, distanceMeters }) => ({
+      driverId,
+      userId,
+      driverName,
+      latitude,
+      longitude,
+      heading,
+      distanceMeters,
+    }));
+
+    return { count: sanitized.length, drivers: sanitized };
   }
 }

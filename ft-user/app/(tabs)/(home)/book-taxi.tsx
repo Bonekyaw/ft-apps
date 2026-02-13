@@ -13,6 +13,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import MapView, {
+  Circle,
   Marker,
   Polyline,
   PROVIDER_GOOGLE,
@@ -91,9 +92,11 @@ export default function BookTaxiScreen() {
   const setBookingSearching = useRideBookingStore((s) => s.setBookingSearching);
   const resetBookingStatus = useRideBookingStore((s) => s.resetBookingStatus);
   const skippedDriverUserIds = useRideBookingStore((s) => s.skippedDriverUserIds);
+  const vehicleTypePreference = useRideBookingStore((s) => s.vehicleType);
   const fuelPreference = useRideBookingStore((s) => s.fuelPreference);
   const petFriendly = useRideBookingStore((s) => s.petFriendly);
   const extraPassengers = useRideBookingStore((s) => s.extraPassengers);
+  const currentDispatchDriver = useRideBookingStore((s) => s.currentDispatchDriver);
 
   // ── Local state ──
   const [selectedVehicle, setSelectedVehicle] =
@@ -103,6 +106,8 @@ export default function BookTaxiScreen() {
   const [isBooking, setIsBooking] = useState(false);
   const [nearbyDrivers, setNearbyDrivers] = useState<NearbyDriver[]>([]);
   const driverPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Toggles between two circle sizes for a breathing pulse on the map. */
+  const [pulsePhase, setPulsePhase] = useState(false);
 
   // All filled destination stops (in order)
   const filledStops = useMemo(
@@ -220,6 +225,17 @@ export default function BookTaxiScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingStatus]);
 
+  // ── Pulsing circle animation on map while searching ──
+  useEffect(() => {
+    if (bookingStatus !== "searching" || !currentDispatchDriver) {
+      return;
+    }
+    const interval = setInterval(() => {
+      setPulsePhase((prev) => !prev);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [bookingStatus, currentDispatchDriver]);
+
   // ── Auto-return when no_driver or driver_cancelled ──
   useEffect(() => {
     if (bookingStatus === "no_driver") {
@@ -325,6 +341,8 @@ export default function BookTaxiScreen() {
         passengerNote: pickupNote || undefined,
         pickupPhotoUrl: photoUrl,
         routeQuoteId,
+        vehicleTypePreference:
+          vehicleTypePreference !== "ANY" ? vehicleTypePreference : undefined,
         fuelPreference: fuelPreference !== "ANY" ? fuelPreference : undefined,
         petFriendly: petFriendly || undefined,
         extraPassengers: extraPassengers || undefined,
@@ -349,6 +367,7 @@ export default function BookTaxiScreen() {
     pickupPhotoUri,
     selectedVehicle,
     pickupNote,
+    vehicleTypePreference,
     fuelPreference,
     petFriendly,
     extraPassengers,
@@ -475,6 +494,32 @@ export default function BookTaxiScreen() {
               rotation={driver.heading ?? undefined}
             />
           ))}
+
+        {/* Pulsing circle overlay while contacting a driver */}
+        {bookingStatus === "searching" && currentDispatchDriver && pickup && (
+          <>
+            <Circle
+              center={{
+                latitude: pickup.latitude,
+                longitude: pickup.longitude,
+              }}
+              radius={pulsePhase ? 200 : 120}
+              fillColor="rgba(255, 184, 0, 0.08)"
+              strokeColor="rgba(255, 184, 0, 0.25)"
+              strokeWidth={1}
+            />
+            <Circle
+              center={{
+                latitude: pickup.latitude,
+                longitude: pickup.longitude,
+              }}
+              radius={pulsePhase ? 120 : 200}
+              fillColor="rgba(255, 184, 0, 0.15)"
+              strokeColor="rgba(255, 184, 0, 0.35)"
+              strokeWidth={1}
+            />
+          </>
+        )}
       </MapView>
 
       {/* ── Back button ── */}
