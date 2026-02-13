@@ -226,7 +226,10 @@
     "cancel": "Cancel",
     "continue": "Continue",
     "driverCancelledTitle": "Ride Cancelled",
-    "driverCancelledMessage": "Your driver cancelled the ride. You can try booking again."
+    "driverCancelledMessage": "Your driver cancelled the ride. You can try booking again.",
+    "priceExpiredTitle": "Price Expired",
+    "priceExpiredMessage": "Prices may have changed. Please refresh to get the latest fare.",
+    "refreshPrice": "Refresh Price"
   },
   "explore": {
     "searchPlaceholder": "Search for a place or address"

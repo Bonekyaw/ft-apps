@@ -28,7 +28,7 @@ interface CreateRideBody {
   vehicleType?: string;
   passengerNote?: string;
   pickupPhotoUrl?: string;
-  routeQuoteId?: string;
+  routeQuoteId: string;
   /** Rider's vehicle type preference from filter chips (null = no filter). */
   vehicleTypePreference?: string;
   fuelPreference?: string;

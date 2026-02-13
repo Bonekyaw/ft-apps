@@ -25,7 +25,8 @@ interface CreateRideInput {
   vehicleType: VehicleType;
   passengerNote?: string;
   pickupPhotoUrl?: string;
-  routeQuoteId?: string;
+  /** Required — all fares come from a server-persisted RouteQuote. */
+  routeQuoteId: string;
   /** Rider's vehicle type preference for matching (null = any driver). */
   vehicleTypePreference?: string;
   fuelPreference?: string;
@@ -68,44 +69,58 @@ export class RidesService {
       extraPassengers,
     } = input;
 
-    // Default fare values
-    let baseFare = 0;
+    // ── Security: a valid route quote is REQUIRED ──
+    // The backend never accepts fare amounts from the frontend.
+    // All pricing comes from a server-persisted RouteQuote record.
+    if (!routeQuoteId) {
+      throw new BadRequestException(
+        'A route quote is required to create a ride.',
+      );
+    }
+
+    const quote = await this.prisma.routeQuote.findUnique({
+      where: { id: routeQuoteId },
+    });
+
+    if (!quote) {
+      throw new BadRequestException(`RouteQuote not found: ${routeQuoteId}`);
+    }
+
+    // ── Quote expiry: reject quotes older than 10 minutes ──
+    const QUOTE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
+    const quoteAge = Date.now() - quote.createdAt.getTime();
+    if (quoteAge > QUOTE_MAX_AGE_MS) {
+      throw new BadRequestException(
+        'QUOTE_EXPIRED: This price quote has expired. Please refresh the route to get the current price.',
+      );
+    }
+
+    // ── Prevent quote reuse — a quote can only be used for one ride ──
+    if (quote.rideId && quote.rideId !== 'pending') {
+      throw new BadRequestException(
+        'This quote has already been used for another ride.',
+      );
+    }
+
+    const distanceMeters = quote.distanceMeters;
+    const durationSeconds = quote.durationSeconds;
+    const polyline = quote.encodedPolyline;
+    const currency = quote.currency;
+
+    // Select fare based on vehicle type — price comes entirely from the DB
+    const isPlus = vehicleType === VehicleType.PLUS;
+    const totalFare = Number(
+      isPlus ? quote.taxiPlusFareMmkt : quote.standardFareMmkt,
+    );
+    const baseFare = totalFare;
     const distanceFare = 0;
     const timeFare = 0;
-    let totalFare = 0;
-    let distanceMeters: number | undefined;
-    let durationSeconds: number | undefined;
-    let polyline: string | undefined;
-    let currency = 'MMK';
 
-    // Use pre-calculated fare from RouteQuote if available
-    if (routeQuoteId) {
-      const quote = await this.prisma.routeQuote.findUnique({
-        where: { id: routeQuoteId },
-      });
-
-      if (!quote) {
-        throw new BadRequestException(`RouteQuote not found: ${routeQuoteId}`);
-      }
-
-      distanceMeters = quote.distanceMeters;
-      durationSeconds = quote.durationSeconds;
-      polyline = quote.encodedPolyline;
-      currency = quote.currency;
-
-      // Select fare based on vehicle type
-      const isPlus = vehicleType === VehicleType.PLUS;
-      totalFare = Number(
-        isPlus ? quote.taxiPlusFareMmkt : quote.standardFareMmkt,
-      );
-      baseFare = totalFare; // Simplified: entire quoted fare as base
-
-      // Link the quote to this ride
-      await this.prisma.routeQuote.update({
-        where: { id: routeQuoteId },
-        data: { rideId: 'pending' }, // Will update with actual rideId below
-      });
-    }
+    // Link the quote to this ride
+    await this.prisma.routeQuote.update({
+      where: { id: routeQuoteId },
+      data: { rideId: 'pending' }, // Will update with actual rideId below
+    });
 
     const ride = await this.prisma.ride.create({
       data: {
@@ -136,12 +151,10 @@ export class RidesService {
     });
 
     // Update the quote with the actual ride ID
-    if (routeQuoteId) {
-      await this.prisma.routeQuote.update({
-        where: { id: routeQuoteId },
-        data: { rideId: ride.id },
-      });
-    }
+    await this.prisma.routeQuote.update({
+      where: { id: routeQuoteId },
+      data: { rideId: ride.id },
+    });
 
     this.logger.log(`Ride created: ${ride.id} for passenger ${passengerId}`);
 

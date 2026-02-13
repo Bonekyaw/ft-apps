@@ -75,6 +75,8 @@ interface RideBookingState {
   distanceKm: number | null;
   durationMinutes: number | null;
   currency: string;
+  /** Timestamp (ms) when the route quote was fetched — used for 10-min expiry. */
+  quoteFetchedAt: number | null;
 
   // Booking flow (post-ride-creation)
   bookingStatus: BookingStatus;
@@ -160,6 +162,7 @@ const INITIAL_STATE = {
   distanceKm: null as number | null,
   durationMinutes: null as number | null,
   currency: "MMK",
+  quoteFetchedAt: null as number | null,
   ...BOOKING_FLOW_INITIAL,
 };
 
@@ -236,6 +239,7 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
       distanceKm: data.distanceKm,
       durationMinutes: data.durationMinutes,
       currency: data.currency,
+      quoteFetchedAt: Date.now(),
     });
   },
 
@@ -248,6 +252,7 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
       plusFare: null,
       distanceKm: null,
       durationMinutes: null,
+      quoteFetchedAt: null,
       ...BOOKING_FLOW_INITIAL,
     });
   },

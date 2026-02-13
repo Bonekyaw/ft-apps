@@ -97,6 +97,7 @@ export default function BookTaxiScreen() {
   const petFriendly = useRideBookingStore((s) => s.petFriendly);
   const extraPassengers = useRideBookingStore((s) => s.extraPassengers);
   const currentDispatchDriver = useRideBookingStore((s) => s.currentDispatchDriver);
+  const quoteFetchedAt = useRideBookingStore((s) => s.quoteFetchedAt);
 
   // ── Local state ──
   // Default the fare card to "PLUS" when rider chose "PLUS" in filters
@@ -106,6 +107,7 @@ export default function BookTaxiScreen() {
   const [isLoadingRoute, setIsLoadingRoute] = useState(true);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [isBooking, setIsBooking] = useState(false);
+  const [quoteExpired, setQuoteExpired] = useState(false);
   const [nearbyDrivers, setNearbyDrivers] = useState<NearbyDriver[]>([]);
   const driverPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   /** Toggles between two circle sizes for a breathing pulse on the map. */
@@ -198,6 +200,24 @@ export default function BookTaxiScreen() {
     // Only run on mount — stops won't change on this screen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Quote expiry timer (10 minutes) ──
+  useEffect(() => {
+    if (!quoteFetchedAt) {
+      setQuoteExpired(false);
+      return;
+    }
+    const QUOTE_MAX_AGE_MS = 10 * 60 * 1000;
+    const elapsed = Date.now() - quoteFetchedAt;
+    if (elapsed >= QUOTE_MAX_AGE_MS) {
+      setQuoteExpired(true);
+      return;
+    }
+    // Schedule expiry for the remaining time
+    setQuoteExpired(false);
+    const timer = setTimeout(() => setQuoteExpired(true), QUOTE_MAX_AGE_MS - elapsed);
+    return () => clearTimeout(timer);
+  }, [quoteFetchedAt]);
 
   // ── Fit map to route once coordinates are available ──
   useEffect(() => {
@@ -358,7 +378,17 @@ export default function BookTaxiScreen() {
     } catch (err) {
       // If ride creation fails, clean up Ably listener
       void stopListening();
-      showAlert({ title: "Error", message: getErrorMessage(err) });
+      const msg = getErrorMessage(err);
+      if (msg.includes("QUOTE_EXPIRED")) {
+        // Server confirmed the quote is stale — force the expiry UI
+        setQuoteExpired(true);
+        showAlert({
+          title: t("bookTaxi.priceExpiredTitle"),
+          message: t("bookTaxi.priceExpiredMessage"),
+        });
+      } else {
+        showAlert({ title: "Error", message: msg });
+      }
     } finally {
       setIsBooking(false);
     }
@@ -762,39 +792,76 @@ export default function BookTaxiScreen() {
               </View>
             )}
 
-            {/* Book button */}
-            <Pressable
-              onPress={handleBook}
-              disabled={isBooking}
-              style={[
-                styles.bookButton,
-                {
-                  backgroundColor: isBooking
-                    ? colors.inputBackground
-                    : Brand.primary,
-                },
-              ]}
-            >
-              {isBooking ? (
-                <View style={styles.bookingRow}>
-                  <ActivityIndicator size="small" color={Brand.secondary} />
-                  <Text
-                    style={[
-                      styles.bookButtonText,
-                      { color: Brand.secondary },
-                    ]}
-                  >
-                    {t("bookTaxi.booking")}
-                  </Text>
-                </View>
-              ) : (
-                <Text
-                  style={[styles.bookButtonText, { color: Brand.secondary }]}
-                >
-                  {t("bookTaxi.book")}
+            {/* Price expired banner */}
+            {quoteExpired && (
+              <View style={styles.expiredBanner}>
+                <MaterialIcons name="access-time" size={18} color={Brand.error} />
+                <Text style={styles.expiredText}>
+                  {t("bookTaxi.priceExpiredMessage")}
                 </Text>
-              )}
-            </Pressable>
+              </View>
+            )}
+
+            {/* Book / Refresh button */}
+            {quoteExpired ? (
+              <Pressable
+                onPress={() => {
+                  setQuoteExpired(false);
+                  void loadRouteQuote();
+                }}
+                disabled={isLoadingRoute}
+                style={[styles.bookButton, { backgroundColor: Brand.warning }]}
+              >
+                {isLoadingRoute ? (
+                  <View style={styles.bookingRow}>
+                    <ActivityIndicator size="small" color={Brand.secondary} />
+                    <Text style={[styles.bookButtonText, { color: Brand.secondary }]}>
+                      {t("bookTaxi.loadingRoute")}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.bookingRow}>
+                    <MaterialIcons name="refresh" size={20} color={Brand.secondary} />
+                    <Text style={[styles.bookButtonText, { color: Brand.secondary }]}>
+                      {t("bookTaxi.refreshPrice")}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={handleBook}
+                disabled={isBooking}
+                style={[
+                  styles.bookButton,
+                  {
+                    backgroundColor: isBooking
+                      ? colors.inputBackground
+                      : Brand.primary,
+                  },
+                ]}
+              >
+                {isBooking ? (
+                  <View style={styles.bookingRow}>
+                    <ActivityIndicator size="small" color={Brand.secondary} />
+                    <Text
+                      style={[
+                        styles.bookButtonText,
+                        { color: Brand.secondary },
+                      ]}
+                    >
+                      {t("bookTaxi.booking")}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text
+                    style={[styles.bookButtonText, { color: Brand.secondary }]}
+                  >
+                    {t("bookTaxi.book")}
+                  </Text>
+                )}
+              </Pressable>
+            )}
           </>
         )}
       </View>
@@ -998,5 +1065,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
+  },
+  expiredBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    backgroundColor: "#FEF2F2",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.sm,
+  },
+  expiredText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Brand.error,
+    fontWeight: "500",
+    lineHeight: 18,
   },
 });
