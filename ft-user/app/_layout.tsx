@@ -15,6 +15,7 @@ import {
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTranslation } from "@/lib/i18n";
 import { Brand, Colors } from "@/constants/theme";
+import { CustomAlert } from "@/components/ui/custom-alert";
 
 function RootStack() {
   const colorScheme = useColorScheme();
@@ -93,6 +94,7 @@ export default function RootLayout() {
           <RootStack />
         </OnboardingProvider>
       </ThemeProvider>
+      <CustomAlert />
       <StatusBar style="auto" />
     </QueryClientProvider>
   );

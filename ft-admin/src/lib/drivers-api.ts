@@ -2,6 +2,20 @@
 
 const BASE = import.meta.env.VITE_BETTER_AUTH_URL ?? "http://localhost:3000";
 
+export interface Vehicle {
+  id: string;
+  driverId: string;
+  type: string;
+  fuelType?: string | null;
+  make: string;
+  model: string;
+  year: number;
+  color: string;
+  plateNumber: string;
+  capacity: number;
+  isActive: boolean;
+}
+
 export interface Driver {
   id: string;
   userId: string;
@@ -12,6 +26,7 @@ export interface Driver {
   banned?: boolean;
   approvalStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
   status: "OFFLINE" | "ONLINE" | "ON_TRIP";
+  petFriendly?: boolean;
   licenseNumber?: string | null;
   licenseExpiry?: string | null;
   nationalId?: string | null;
@@ -21,7 +36,7 @@ export interface Driver {
   totalEarnings?: string | number;
   averageRating: string | number;
   ratingCount?: number;
-  vehicle?: unknown;
+  vehicle?: Vehicle | null;
   createdAt: string;
 }
 
@@ -85,10 +100,32 @@ export async function updateDriver(
     licenseNumber?: string;
     licenseExpiry?: string;
     nationalId?: string;
+    petFriendly?: boolean;
   }
 ) {
   const res = await authFetch(`${BASE}/admin/drivers/${id}`, {
     method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function upsertVehicle(
+  driverId: string,
+  data: {
+    type: string;
+    fuelType?: string | null;
+    make: string;
+    model: string;
+    year: number;
+    color: string;
+    plateNumber: string;
+    capacity?: number;
+  }
+) {
+  const res = await authFetch(`${BASE}/admin/drivers/${driverId}/vehicle`, {
+    method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });

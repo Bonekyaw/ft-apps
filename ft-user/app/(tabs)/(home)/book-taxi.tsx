@@ -6,7 +6,6 @@ import {
   Pressable,
   ActivityIndicator,
   Platform,
-  Alert,
   Image,
   useWindowDimensions,
 } from "react-native";
@@ -44,6 +43,7 @@ import { useTabBarVisibility } from "@/context/tab-bar-context";
 import { useRideBookingStore } from "@/store/ride-booking";
 import BookingStatusOverlay from "@/components/booking/BookingStatusOverlay";
 import { CarMarker } from "@/components/map/CarMarker";
+import { showAlert } from "@/store/alert-store";
 
 /** Height of the iOS native tab bar (points). Bottom card must sit above it. */
 const IOS_TAB_BAR_HEIGHT = 50;
@@ -91,6 +91,9 @@ export default function BookTaxiScreen() {
   const setBookingSearching = useRideBookingStore((s) => s.setBookingSearching);
   const resetBookingStatus = useRideBookingStore((s) => s.resetBookingStatus);
   const skippedDriverUserIds = useRideBookingStore((s) => s.skippedDriverUserIds);
+  const fuelPreference = useRideBookingStore((s) => s.fuelPreference);
+  const petFriendly = useRideBookingStore((s) => s.petFriendly);
+  const extraPassengers = useRideBookingStore((s) => s.extraPassengers);
 
   // ── Local state ──
   const [selectedVehicle, setSelectedVehicle] =
@@ -221,18 +224,20 @@ export default function BookTaxiScreen() {
   useEffect(() => {
     if (bookingStatus === "no_driver") {
       void stopListening();
-      Alert.alert(
-        t("bookTaxi.noDriverFound"),
-        t("bookTaxi.noDriverMessage"),
-        [{ text: t("auth.ok"), onPress: () => resetBookingStatus() }],
-      );
+      showAlert({
+        variant: "warning",
+        title: t("bookTaxi.noDriverFound"),
+        message: t("bookTaxi.noDriverMessage"),
+        buttons: [{ text: t("auth.ok"), onPress: () => resetBookingStatus() }],
+      });
     } else if (bookingStatus === "driver_cancelled") {
       void stopListening();
-      Alert.alert(
-        t("bookTaxi.driverCancelledTitle"),
-        t("bookTaxi.driverCancelledMessage"),
-        [{ text: t("auth.ok"), onPress: () => resetBookingStatus() }],
-      );
+      showAlert({
+        variant: "warning",
+        title: t("bookTaxi.driverCancelledTitle"),
+        message: t("bookTaxi.driverCancelledMessage"),
+        buttons: [{ text: t("auth.ok"), onPress: () => resetBookingStatus() }],
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingStatus]);
@@ -309,15 +314,20 @@ export default function BookTaxiScreen() {
       // 3. Create ride — backend dispatches immediately after
       const ride = await createRide({
         pickupAddress: pickup.address,
+        pickupMainText: pickup.mainText || undefined,
         pickupLat: pickup.latitude,
         pickupLng: pickup.longitude,
         dropoffAddress: finalDestination.address,
+        dropoffMainText: finalDestination.mainText || undefined,
         dropoffLat: finalDestination.latitude,
         dropoffLng: finalDestination.longitude,
         vehicleType: selectedVehicle,
         passengerNote: pickupNote || undefined,
         pickupPhotoUrl: photoUrl,
         routeQuoteId,
+        fuelPreference: fuelPreference !== "ANY" ? fuelPreference : undefined,
+        petFriendly: petFriendly || undefined,
+        extraPassengers: extraPassengers || undefined,
       });
 
       // 4. Enter "searching for driver" state
@@ -328,7 +338,7 @@ export default function BookTaxiScreen() {
     } catch (err) {
       // If ride creation fails, clean up Ably listener
       void stopListening();
-      Alert.alert("Error", getErrorMessage(err));
+      showAlert({ title: "Error", message: getErrorMessage(err) });
     } finally {
       setIsBooking(false);
     }
@@ -339,6 +349,9 @@ export default function BookTaxiScreen() {
     pickupPhotoUri,
     selectedVehicle,
     pickupNote,
+    fuelPreference,
+    petFriendly,
+    extraPassengers,
     session,
     setBookingSearching,
   ]);

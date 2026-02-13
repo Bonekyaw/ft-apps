@@ -14,15 +14,20 @@ import { AblyPublisherService } from '../dispatch/ably-publisher.service.js';
 
 interface CreateRideInput {
   pickupAddress: string;
+  pickupMainText?: string;
   pickupLat: number;
   pickupLng: number;
   dropoffAddress: string;
+  dropoffMainText?: string;
   dropoffLat: number;
   dropoffLng: number;
   vehicleType: VehicleType;
   passengerNote?: string;
   pickupPhotoUrl?: string;
   routeQuoteId?: string;
+  fuelPreference?: string;
+  petFriendly?: boolean;
+  extraPassengers?: boolean;
 }
 
 @Injectable()
@@ -43,15 +48,20 @@ export class RidesService {
   async createRide(passengerId: string, input: CreateRideInput) {
     const {
       pickupAddress,
+      pickupMainText,
       pickupLat,
       pickupLng,
       dropoffAddress,
+      dropoffMainText,
       dropoffLat,
       dropoffLng,
       vehicleType,
       passengerNote,
       pickupPhotoUrl,
       routeQuoteId,
+      fuelPreference,
+      petFriendly,
+      extraPassengers,
     } = input;
 
     // Default fare values
@@ -98,9 +108,11 @@ export class RidesService {
         passengerId,
         vehicleType,
         pickupAddress,
+        pickupMainText: pickupMainText ?? null,
         pickupLat,
         pickupLng,
         dropoffAddress,
+        dropoffMainText: dropoffMainText ?? null,
         dropoffLat,
         dropoffLng,
         distanceMeters,
@@ -113,6 +125,9 @@ export class RidesService {
         currency,
         passengerNote: passengerNote ?? null,
         pickupPhotoUrl: pickupPhotoUrl ?? null,
+        fuelPreference: fuelPreference ?? null,
+        petFriendly: petFriendly ?? false,
+        extraPassengers: extraPassengers ?? false,
       },
     });
 
@@ -141,6 +156,9 @@ export class RidesService {
       vehicleType: ride.vehicleType,
       passengerNote: passengerNote ?? null,
       pickupPhotoUrl: pickupPhotoUrl ?? null,
+      fuelPreference: fuelPreference ?? null,
+      petFriendly: petFriendly ?? false,
+      extraPassengers: extraPassengers ?? false,
     });
 
     return {
@@ -298,6 +316,9 @@ export class RidesService {
 
   async skipRide(rideId: string, driverUserId: string) {
     this.logger.log(`Driver user ${driverUserId} skipped ride ${rideId}`);
+
+    // Mark driver as skipped in active dispatch so they won't be re-notified
+    this.dispatch.markDriverSkipped(rideId, driverUserId);
 
     // Notify the rider so their map can remove this driver's car icon
     const ride = await this.prisma.ride.findUnique({

@@ -369,10 +369,44 @@ export class MapsService {
   async reverseGeocode(
     latitude: number,
     longitude: number,
-  ): Promise<{ address: string; placeId: string } | null> {
+  ): Promise<{ address: string; placeId: string; name: string | null } | null> {
     const apiKey = this.getApiKey();
     const url = `https://maps.googleapis.com/maps/api/geocode/json`;
 
+    // First, try to get a specific place name (POI / establishment / premise)
+    const { data: poiData } = await axios.get<{
+      status: string;
+      results?: Array<{
+        formatted_address: string;
+        place_id: string;
+        types?: string[];
+        address_components?: Array<{
+          long_name: string;
+          short_name: string;
+          types: string[];
+        }>;
+      }>;
+    }>(url, {
+      params: {
+        latlng: `${latitude},${longitude}`,
+        key: apiKey,
+        language: 'en',
+        result_type:
+          'point_of_interest|establishment|premise|airport|park',
+      },
+      timeout: 10_000,
+    });
+
+    // If we found a POI/establishment, use it — the name is the first part before the comma
+    if (poiData.status === 'OK' && poiData.results?.length) {
+      const best = this.pickNonPlusCode(poiData.results);
+      if (best) {
+        const name = best.address.split(',')[0].trim();
+        return { ...best, name };
+      }
+    }
+
+    // Fall back to street-level results
     const { data } = await axios.get<{
       status: string;
       results?: Array<{
@@ -385,43 +419,41 @@ export class MapsService {
         latlng: `${latitude},${longitude}`,
         key: apiKey,
         language: 'en',
-        result_type: 'street_address|route|sublocality|locality|neighborhood',
+        result_type:
+          'street_address|route|sublocality|locality|neighborhood',
       },
       timeout: 10_000,
     });
 
-    // If filtered result_type returned nothing, retry without the filter
-    if (data.status === 'ZERO_RESULTS' || !data.results?.length) {
-      const { data: fallback } = await axios.get<{
-        status: string;
-        results?: Array<{
-          formatted_address: string;
-          place_id: string;
-        }>;
-      }>(url, {
-        params: {
-          latlng: `${latitude},${longitude}`,
-          key: apiKey,
-          language: 'en',
-        },
-        timeout: 10_000,
-      });
-
-      if (fallback.status !== 'OK' || !fallback.results?.length) {
-        return null;
+    if (data.status === 'OK' && data.results?.length) {
+      const best = this.pickNonPlusCode(data.results);
+      if (best) {
+        return { ...best, name: null };
       }
-
-      // Pick first non-Plus-Code result from the unfiltered response
-      const best = this.pickNonPlusCode(fallback.results);
-      return best;
     }
 
-    if (data.status !== 'OK') {
+    // Last resort: no filter at all
+    const { data: fallback } = await axios.get<{
+      status: string;
+      results?: Array<{
+        formatted_address: string;
+        place_id: string;
+      }>;
+    }>(url, {
+      params: {
+        latlng: `${latitude},${longitude}`,
+        key: apiKey,
+        language: 'en',
+      },
+      timeout: 10_000,
+    });
+
+    if (fallback.status !== 'OK' || !fallback.results?.length) {
       return null;
     }
 
-    const best = this.pickNonPlusCode(data.results);
-    return best;
+    const best = this.pickNonPlusCode(fallback.results);
+    return best ? { ...best, name: null } : null;
   }
 
   // ---------------------------------------------------------------------------

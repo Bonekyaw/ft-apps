@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   UnauthorizedException,
   UploadedFile,
   UseInterceptors,
@@ -48,6 +49,18 @@ interface UpdateDriverDto {
   licenseNumber?: string;
   licenseExpiry?: string;
   nationalId?: string;
+  petFriendly?: boolean;
+}
+
+interface UpsertVehicleDto {
+  type: string;
+  fuelType?: string | null;
+  make: string;
+  model: string;
+  year: number;
+  color: string;
+  plateNumber: string;
+  capacity?: number;
 }
 
 @Controller('admin/drivers')
@@ -133,6 +146,26 @@ export class DriversController {
   ) {
     assertElevated(session);
     return this.driversService.deleteDriver(id);
+  }
+
+  /** Create or update the vehicle for a driver. */
+  @Put(':id/vehicle')
+  async upsertVehicle(
+    @Session() session: UserSession | null,
+    @Param('id') id: string,
+    @Body() dto: UpsertVehicleDto,
+  ) {
+    assertElevated(session);
+    return this.driversService.upsertVehicle(id, {
+      type: dto.type as import('../generated/prisma/enums.js').VehicleType,
+      fuelType: (dto.fuelType as import('../generated/prisma/enums.js').FuelType) ?? null,
+      make: dto.make,
+      model: dto.model,
+      year: Number(dto.year),
+      color: dto.color,
+      plateNumber: dto.plateNumber,
+      capacity: dto.capacity ? Number(dto.capacity) : 4,
+    });
   }
 
   /** Revoke all sessions for a driver. */

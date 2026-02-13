@@ -77,7 +77,6 @@ export default function DestinationSearchScreen() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isResolvingPlace, setIsResolvingPlace] = useState(false);
-  const [activeTab, setActiveTab] = useState<"recent" | "saved">("recent");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -382,14 +381,20 @@ export default function DestinationSearchScreen() {
           ) : null}
         </View>
       ) : (
-        /* Main content — filters, recent, saved */
+        /* Main content — saved places, filters, recent rides */
         <ScrollView
           style={styles.scrollBody}
           contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingBottom: 100 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Filters */}
+          {/* Saved Places — horizontal scrollable chips */}
+          <SavedPlaces onSelect={handleSelectPlace} />
+
+          {/* Divider */}
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          {/* Filters (Preferences) */}
           <View style={styles.section}>
             <FilterChips />
           </View>
@@ -397,60 +402,13 @@ export default function DestinationSearchScreen() {
           {/* Divider */}
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          {/* Tab bar — Recent | Saved */}
-          <View style={[styles.tabBar, { paddingHorizontal: Spacing.md }]}>
-            <Pressable
-              onPress={() => setActiveTab("recent")}
-              style={[
-                styles.tab,
-                activeTab === "recent" && {
-                  borderBottomColor: Brand.primary,
-                  borderBottomWidth: 2,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  {
-                    color:
-                      activeTab === "recent" ? Brand.primary : colors.textMuted,
-                  },
-                ]}
-              >
-                {t("destination.recentRides")}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setActiveTab("saved")}
-              style={[
-                styles.tab,
-                activeTab === "saved" && {
-                  borderBottomColor: Brand.primary,
-                  borderBottomWidth: 2,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  {
-                    color:
-                      activeTab === "saved" ? Brand.primary : colors.textMuted,
-                  },
-                ]}
-              >
-                {t("destination.savedPlaces")}
-              </Text>
-            </Pressable>
-          </View>
+          {/* Recent Rides section header */}
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
+            {t("destination.recentRides")}
+          </Text>
 
-          {/* Tab content */}
-          {activeTab === "recent" ? (
-            <RecentPlaces onSelect={handleSelectPlace} />
-          ) : (
-            <SavedPlaces onSelect={handleSelectPlace} />
-          )}
+          {/* Recent rides list */}
+          <RecentPlaces onSelect={handleSelectPlace} />
         </ScrollView>
       )}
     </View>
@@ -565,17 +523,13 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.md,
   },
 
-  // Tabs
-  tabBar: {
-    flexDirection: "row",
-    gap: Spacing.lg,
-    marginBottom: Spacing.xs,
-  },
-  tab: {
-    paddingBottom: Spacing.sm,
-  },
-  tabText: {
-    fontSize: FontSize.sm,
+  // Section header
+  sectionHeader: {
+    fontSize: FontSize.xs,
     fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.xs,
   },
 });

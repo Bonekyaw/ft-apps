@@ -11,6 +11,7 @@ import {
   revokeDriverSessions,
   updateDriver,
   uploadDriverDocument,
+  upsertVehicle,
   getDriver,
   type Driver,
 } from "@/lib/drivers-api";
@@ -220,6 +221,19 @@ function DriverDetailSheet({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
 
+  // Vehicle form state
+  const [vehicleEditing, setVehicleEditing] = useState(false);
+  const [vType, setVType] = useState("ECONOMY");
+  const [vFuelType, setVFuelType] = useState("");
+  const [vMake, setVMake] = useState("");
+  const [vModel, setVModel] = useState("");
+  const [vYear, setVYear] = useState("");
+  const [vColor, setVColor] = useState("");
+  const [vPlate, setVPlate] = useState("");
+  const [vCapacity, setVCapacity] = useState("4");
+  const [petFriendly, setPetFriendly] = useState(false);
+  const [savingVehicle, setSavingVehicle] = useState(false);
+
   const loadDriver = useCallback(async () => {
     if (!driverId) return;
     setLoading(true);
@@ -229,6 +243,22 @@ function DriverDetailSheet({
       setLicenseNumber(d.licenseNumber ?? "");
       setLicenseExpiry(d.licenseExpiry ? d.licenseExpiry.slice(0, 10) : "");
       setNationalId(d.nationalId ?? "");
+      // Populate vehicle form
+      const v = d.vehicle;
+      if (v) {
+        setVType(v.type ?? "ECONOMY");
+        setVFuelType(v.fuelType ?? "");
+        setVMake(v.make ?? "");
+        setVModel(v.model ?? "");
+        setVYear(String(v.year ?? ""));
+        setVColor(v.color ?? "");
+        setVPlate(v.plateNumber ?? "");
+        setVCapacity(String(v.capacity ?? 4));
+      } else {
+        setVType("ECONOMY"); setVFuelType(""); setVMake(""); setVModel("");
+        setVYear(""); setVColor(""); setVPlate(""); setVCapacity("4");
+      }
+      setPetFriendly(d.petFriendly ?? false);
     } catch {
       // silent
     } finally {
@@ -273,6 +303,32 @@ function DriverDetailSheet({
       // silent
     } finally {
       setUploading(null);
+    }
+  }
+
+  async function handleSaveVehicle() {
+    if (!driverId || !vMake.trim() || !vModel.trim() || !vPlate.trim() || !vYear.trim()) return;
+    setSavingVehicle(true);
+    try {
+      await upsertVehicle(driverId, {
+        type: vType,
+        fuelType: vFuelType || null,
+        make: vMake.trim(),
+        model: vModel.trim(),
+        year: Number(vYear),
+        color: vColor.trim(),
+        plateNumber: vPlate.trim(),
+        capacity: Number(vCapacity) || 4,
+      });
+      // Also save petFriendly on driver
+      await updateDriver(driverId, { petFriendly });
+      setVehicleEditing(false);
+      await loadDriver();
+      onUpdated();
+    } catch {
+      // silent
+    } finally {
+      setSavingVehicle(false);
     }
   }
 
@@ -512,6 +568,136 @@ function DriverDetailSheet({
                     disabled={!!uploading}
                   />
                 </label>
+              )}
+            </div>
+
+            {/* Vehicle Details */}
+            <div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">
+                  {t("drivers.detail.vehicleDetails")}
+                </h3>
+                {canEdit && !vehicleEditing && (
+                  <Button variant="outline" size="sm" onClick={() => setVehicleEditing(true)}>
+                    {driver.vehicle ? t("common.update") : t("drivers.detail.addVehicle")}
+                  </Button>
+                )}
+              </div>
+              <Separator className="my-2" />
+
+              {vehicleEditing ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>{t("drivers.detail.vehicleType")}</Label>
+                      <select
+                        aria-label="Vehicle type"
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                        value={vType}
+                        onChange={(e) => setVType(e.target.value)}
+                      >
+                        {["STANDARD", "PLUS", "ECONOMY", "COMFORT", "PREMIUM", "XL", "MOTORBIKE"].map((v) => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>{t("drivers.detail.fuelType")}</Label>
+                      <select
+                        aria-label="Fuel type"
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                        value={vFuelType}
+                        onChange={(e) => setVFuelType(e.target.value)}
+                      >
+                        <option value="">—</option>
+                        {["CNG", "PETROL", "ELECTRIC", "DIESEL", "HYBRID"].map((f) => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>{t("drivers.detail.make")}</Label>
+                      <Input value={vMake} onChange={(e) => setVMake(e.target.value)} placeholder="Toyota" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>{t("drivers.detail.model")}</Label>
+                      <Input value={vModel} onChange={(e) => setVModel(e.target.value)} placeholder="Camry" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label>{t("drivers.detail.year")}</Label>
+                      <Input type="number" value={vYear} onChange={(e) => setVYear(e.target.value)} placeholder="2022" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>{t("drivers.detail.color")}</Label>
+                      <Input value={vColor} onChange={(e) => setVColor(e.target.value)} placeholder="White" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>{t("drivers.detail.capacity")}</Label>
+                      <Input type="number" value={vCapacity} onChange={(e) => setVCapacity(e.target.value)} min={1} max={20} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>{t("drivers.detail.plateNumber")}</Label>
+                    <Input value={vPlate} onChange={(e) => setVPlate(e.target.value)} placeholder="1A/1234" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="petFriendly" title="Pet friendly" checked={petFriendly} onChange={(e) => setPetFriendly(e.target.checked)} className="h-4 w-4 rounded border-input" />
+                    <Label htmlFor="petFriendly">{t("drivers.detail.petFriendly")}</Label>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleSaveVehicle} disabled={savingVehicle || !vMake.trim() || !vPlate.trim()}>
+                      {savingVehicle ? t("common.saving") : t("common.update")}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setVehicleEditing(false)}>
+                      {t("common.cancel")}
+                    </Button>
+                  </div>
+                </div>
+              ) : driver.vehicle ? (
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t("drivers.detail.vehicleType")}</dt>
+                    <dd>{driver.vehicle.type}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t("drivers.detail.fuelType")}</dt>
+                    <dd>{driver.vehicle.fuelType ?? "—"}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t("drivers.detail.make")}</dt>
+                    <dd>{driver.vehicle.make}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t("drivers.detail.model")}</dt>
+                    <dd>{driver.vehicle.model}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t("drivers.detail.year")}</dt>
+                    <dd>{driver.vehicle.year}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t("drivers.detail.color")}</dt>
+                    <dd>{driver.vehicle.color}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t("drivers.detail.plateNumber")}</dt>
+                    <dd>{driver.vehicle.plateNumber}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t("drivers.detail.capacity")}</dt>
+                    <dd>{driver.vehicle.capacity}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t("drivers.detail.petFriendly")}</dt>
+                    <dd>{driver.petFriendly ? "Yes" : "No"}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="text-sm text-muted-foreground">{t("drivers.detail.noVehicle")}</p>
               )}
             </div>
 

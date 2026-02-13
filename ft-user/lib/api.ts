@@ -133,6 +133,21 @@ export async function fetchSavedPlaces(): Promise<SavedPlace[]> {
   return data.places ?? [];
 }
 
+export interface CreateSavedPlacePayload {
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  icon?: string;
+}
+
+export async function createSavedPlace(
+  payload: CreateSavedPlacePayload,
+): Promise<SavedPlace> {
+  const { data } = await api.post<SavedPlace>("/user/saved-places", payload);
+  return data;
+}
+
 // =========================================================================
 // Ride History
 // =========================================================================
@@ -144,6 +159,7 @@ export interface RideHistoryItem {
   pickupLat: number;
   pickupLng: number;
   dropoffAddress: string;
+  dropoffMainText: string | null;
   dropoffLat: number;
   dropoffLng: number;
   totalFare: number;
@@ -191,6 +207,8 @@ export async function fetchPlaceCoordinates(
 export interface ReverseGeocodeResult {
   address: string | null;
   placeId: string | null;
+  /** Specific place name (e.g. "Shwedagon Pagoda") when pin is on a POI. */
+  name: string | null;
 }
 
 export async function reverseGeocode(
@@ -294,15 +312,20 @@ export async function uploadPickupPhoto(uri: string): Promise<string> {
 
 export interface CreateRidePayload {
   pickupAddress: string;
+  pickupMainText?: string;
   pickupLat: number;
   pickupLng: number;
   dropoffAddress: string;
+  dropoffMainText?: string;
   dropoffLat: number;
   dropoffLng: number;
   vehicleType?: string;
   passengerNote?: string;
   pickupPhotoUrl?: string;
   routeQuoteId?: string;
+  fuelPreference?: string;
+  petFriendly?: boolean;
+  extraPassengers?: boolean;
 }
 
 export interface CreateRideResponse {
@@ -347,7 +370,7 @@ export interface NearbyDriver {
 export async function fetchNearbyDrivers(
   lat: number,
   lng: number,
-  radius = 30000,
+  radius = 2500,
   limit = 20,
 ): Promise<NearbyDriver[]> {
   const { data } = await api.get<{ count: number; drivers: NearbyDriver[] }>(

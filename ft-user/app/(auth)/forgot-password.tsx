@@ -7,7 +7,6 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -32,6 +31,7 @@ import {
 import { emailOtp } from "@/lib/auth-client";
 import { validateUserLogin, getErrorMessage } from "@/lib/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { showAlert } from "@/store/alert-store";
 
 export default function ForgotPasswordScreen() {
   const colorScheme = useColorScheme();
@@ -54,7 +54,7 @@ export default function ForgotPasswordScreen() {
       await validateUserLogin(trimmedEmail);
     } catch (error: unknown) {
       const message = getErrorMessage(error);
-      Alert.alert(t("auth.errors.error"), message);
+      showAlert({ title: t("auth.errors.error"), message });
       setLoading(false);
       return;
     }
@@ -66,10 +66,10 @@ export default function ForgotPasswordScreen() {
       });
 
       if (result.error) {
-        Alert.alert(
-          t("auth.errors.error"),
-          result.error.message || t("auth.errors.unexpectedError"),
-        );
+        showAlert({
+          title: t("auth.errors.error"),
+          message: result.error.message || t("auth.errors.unexpectedError"),
+        });
         return;
       }
 
@@ -80,7 +80,7 @@ export default function ForgotPasswordScreen() {
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : t("auth.errors.unexpectedError");
-      Alert.alert(t("auth.errors.error"), message);
+      showAlert({ title: t("auth.errors.error"), message });
     } finally {
       setLoading(false);
     }

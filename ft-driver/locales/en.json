@@ -154,7 +154,8 @@
     "reject": "Reject",
     "countdown": "%{count}s remaining",
     "rideTaken": "Ride Already Taken",
-    "rideTakenMessage": "Another driver has already accepted this ride."
+    "rideTakenMessage": "Another driver has already accepted this ride.",
+    "extraPassengers": "5+ Passengers"
   },
   "activeRide": {
     "navigateToPickup": "Navigate to Pickup",
@@ -162,6 +163,7 @@
     "dropoffLabel": "Drop-off",
     "fareLabel": "Fare",
     "passengerNote": "Passenger Note",
+    "extraPassengers": "5+ Passengers",
     "cancel": "Cancel Ride",
     "cancelTitle": "Cancel Ride?",
     "cancelMessage": "Are you sure you want to cancel this ride?"

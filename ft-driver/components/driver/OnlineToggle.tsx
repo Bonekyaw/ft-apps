@@ -70,9 +70,7 @@ export default function OnlineToggle() {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
+    right: Spacing.md,
     zIndex: 10,
   },
   pill: {

@@ -194,12 +194,26 @@
       "multiplierLabel": "Multiplier",
       "addTimeRule": "Add time rule"
     },
+    "dispatch": {
+      "title": "Driver Search Rounds",
+      "description": "Configure how the dispatch system searches for drivers. Each round expands the search radius. The interval controls how long to wait before moving to the next round.",
+      "round": "Round",
+      "radiusKm": "Radius (km)",
+      "intervalSec": "Interval (s)",
+      "addRound": "Add round",
+      "save": "Save dispatch config",
+      "saving": "Saving...",
+      "empty": "No dispatch rounds configured. Using defaults (0.8 km, 1.5 km, 2.5 km).",
+      "removeTooltip": "Remove round"
+    },
     "errors": {
       "loadConfigs": "Failed to load pricing configs",
       "loadSurcharges": "Failed to load township surcharges",
+      "loadDispatch": "Failed to load dispatch config",
       "saveConfig": "Failed to save config",
       "saveSurcharge": "Failed to save township surcharge",
-      "deleteSurcharge": "Failed to delete township surcharge"
+      "deleteSurcharge": "Failed to delete township surcharge",
+      "saveDispatch": "Failed to save dispatch config"
     }
   },
   "content": {
@@ -343,7 +357,19 @@
       "editInfo": "Edit Information",
       "licenseNumberPlaceholder": "e.g. 12345678",
       "licenseExpiryPlaceholder": "YYYY-MM-DD",
-      "nationalIdPlaceholder": "e.g. 12/YAKANA(N)123456"
+      "nationalIdPlaceholder": "e.g. 12/YAKANA(N)123456",
+      "vehicleDetails": "Vehicle Details",
+      "addVehicle": "Add Vehicle",
+      "vehicleType": "Vehicle Type",
+      "fuelType": "Fuel Type",
+      "make": "Make (Brand)",
+      "model": "Model",
+      "year": "Year",
+      "color": "Color",
+      "plateNumber": "Plate Number",
+      "capacity": "Capacity",
+      "petFriendly": "Pet Friendly",
+      "noVehicle": "No vehicle assigned"
     },
     "create": {
       "title": "Add Driver",

@@ -15,9 +15,11 @@ import {
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTranslation } from "@/lib/i18n";
 import { Brand, Colors } from "@/constants/theme";
+import { CustomAlert } from "@/components/ui/custom-alert";
 import { closeAblyClient, enterPresence, leavePresence } from "@/lib/ably";
 import { useDriverStatusStore } from "@/lib/driver-status-store";
 import { startTracking, stopTracking } from "@/lib/location-tracker";
+import { subscribeToPrivateChannel } from "@/lib/ride-request-listener";
 
 function RootStack() {
   const colorScheme = useColorScheme();
@@ -68,9 +70,13 @@ function RootStack() {
         void stopTracking();
         void leavePresence();
       } else if (nextState === "active") {
-        // Resume presence and GPS tracking when foregrounded
-        void enterPresence(userId);
-        void startTracking();
+        // Resume presence, GPS tracking, and private channel subscription
+        void (async () => {
+          await enterPresence(userId);
+          await startTracking();
+          // Re-subscribe in case the Ably connection was dropped during background
+          await subscribeToPrivateChannel(userId);
+        })();
       }
     });
     return () => sub.remove();
@@ -140,6 +146,7 @@ export default function RootLayout() {
           <RootStack />
         </OnboardingProvider>
       </ThemeProvider>
+      <CustomAlert />
       <StatusBar style="auto" />
     </QueryClientProvider>
   );

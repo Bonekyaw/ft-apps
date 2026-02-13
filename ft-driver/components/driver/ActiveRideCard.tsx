@@ -1,7 +1,7 @@
-import React, { memo, useCallback, useState } from "react";
+import React, { memo, useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -13,7 +13,10 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useRideStore, type ActiveRide } from "@/lib/ride-store";
 import { setActiveRide as setTrackerActiveRide } from "@/lib/location-tracker";
 import { cancelRide, getErrorMessage } from "@/lib/api";
+import { Brand } from "@/constants/theme";
 import { useTranslation } from "@/lib/i18n";
+import { showAlert } from "@/lib/alert-store";
+import PhotoViewerModal from "@/components/ui/photo-viewer-modal";
 import {
   Brand,
   BorderRadius,
@@ -25,10 +28,19 @@ interface Props {
   ride: ActiveRide;
 }
 
+/** Height of the iOS native tab bar (points). */
+const IOS_TAB_BAR_HEIGHT = 50;
+
 export default memo(function ActiveRideCard({ ride }: Props) {
   const { t } = useTranslation();
   const clearActiveRide = useRideStore((s) => s.clearActiveRide);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
+
+  const bottomOffset = useMemo(
+    () => (Platform.OS === "ios" ? IOS_TAB_BAR_HEIGHT : 0),
+    [],
+  );
 
   const fareText = `${Math.round(ride.totalFare).toLocaleString()} ${ride.currency}`;
 
@@ -43,29 +55,41 @@ export default memo(function ActiveRideCard({ ride }: Props) {
   }, [ride.pickupLat, ride.pickupLng]);
 
   const handleCancel = useCallback(() => {
-    Alert.alert(t("activeRide.cancelTitle"), t("activeRide.cancelMessage"), [
-      { text: t("auth.ok"), style: "cancel" },
-      {
-        text: t("activeRide.cancel"),
-        style: "destructive",
-        onPress: async () => {
-          setIsCancelling(true);
-          try {
-            await cancelRide(ride.rideId);
-            clearActiveRide();
-            void setTrackerActiveRide(null);
-          } catch (err) {
-            Alert.alert("Error", getErrorMessage(err));
-          } finally {
-            setIsCancelling(false);
-          }
+    showAlert({
+      variant: "warning",
+      title: t("activeRide.cancelTitle"),
+      message: t("activeRide.cancelMessage"),
+      buttons: [
+        { text: t("auth.ok"), style: "cancel" },
+        {
+          text: t("activeRide.cancel"),
+          onPress: async () => {
+            setIsCancelling(true);
+            try {
+              await cancelRide(ride.rideId);
+              clearActiveRide();
+              void setTrackerActiveRide(null);
+            } catch (err) {
+              showAlert({ title: "Error", message: getErrorMessage(err) });
+            } finally {
+              setIsCancelling(false);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    });
   }, [t, clearActiveRide, ride.rideId]);
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          bottom: bottomOffset,
+          paddingBottom: Platform.OS === "ios" ? Spacing.lg : Spacing.xl,
+        },
+      ]}
+    >
       {/* ── Fare hero ── */}
       <View style={styles.fareRow}>
         <MaterialIcons name="payments" size={20} color={Brand.primary} />
@@ -109,6 +133,16 @@ export default memo(function ActiveRideCard({ ride }: Props) {
         </View>
       </View>
 
+      {/* ── Extra passengers ── */}
+      {ride.extraPassengers ? (
+        <View style={styles.noteRow}>
+          <MaterialIcons name="group" size={16} color={Brand.warning} />
+          <Text style={[styles.noteText, { color: Brand.warning, fontWeight: '600' }]}>
+            {t("activeRide.extraPassengers")}
+          </Text>
+        </View>
+      ) : null}
+
       {/* ── Passenger note ── */}
       {ride.passengerNote ? (
         <View style={styles.noteRow}>
@@ -117,6 +151,31 @@ export default memo(function ActiveRideCard({ ride }: Props) {
             {ride.passengerNote}
           </Text>
         </View>
+      ) : null}
+
+      {/* ── Pickup photo ── */}
+      {ride.pickupPhotoUrl ? (
+        <Pressable
+          style={styles.photoRow}
+          onPress={() => setPhotoModalVisible(true)}
+        >
+          <MaterialIcons name="photo-camera" size={16} color="#64748B" />
+          <Image
+            source={{ uri: ride.pickupPhotoUrl }}
+            style={styles.pickupPhoto}
+            resizeMode="cover"
+          />
+          <MaterialIcons name="zoom-in" size={16} color="#94A3B8" />
+        </Pressable>
+      ) : null}
+
+      {/* Photo viewer modal */}
+      {ride.pickupPhotoUrl ? (
+        <PhotoViewerModal
+          visible={photoModalVisible}
+          uri={ride.pickupPhotoUrl}
+          onClose={() => setPhotoModalVisible(false)}
+        />
       ) : null}
 
       {/* ── Actions ── */}
@@ -148,14 +207,12 @@ export default memo(function ActiveRideCard({ ride }: Props) {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: "#fff",
     borderTopLeftRadius: BorderRadius.lg,
     borderTopRightRadius: BorderRadius.lg,
     padding: Spacing.lg,
-    paddingBottom: Spacing.xl,
     elevation: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -3 },
@@ -248,6 +305,23 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: "#64748B",
     flex: 1,
+  },
+
+  // Pickup photo
+  photoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E2E8F0",
+    marginBottom: Spacing.sm,
+  },
+  pickupPhoto: {
+    width: 120,
+    height: 90,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: "#F1F5F9",
   },
 
   // Actions

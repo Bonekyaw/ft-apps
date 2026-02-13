@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma.service.js';
-import type { DriverApprovalStatus } from '../generated/prisma/enums.js';
+import type { DriverApprovalStatus, VehicleType, FuelType } from '../generated/prisma/enums.js';
 
 @Injectable()
 export class DriversService {
@@ -76,6 +76,7 @@ export class DriversService {
             createdAt: true,
           },
         },
+        vehicle: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -89,6 +90,7 @@ export class DriversService {
       banned: d.user.banned,
       approvalStatus: d.approvalStatus,
       status: d.status,
+      petFriendly: d.petFriendly,
       licenseNumber: d.licenseNumber,
       licenseExpiry: d.licenseExpiry,
       nationalId: d.nationalId,
@@ -96,6 +98,7 @@ export class DriversService {
       nationalIdImageUrl: d.nationalIdImageUrl,
       totalRides: d.totalRides,
       averageRating: d.averageRating,
+      vehicle: d.vehicle,
       createdAt: d.user.createdAt,
     }));
   }
@@ -131,6 +134,7 @@ export class DriversService {
       banned: driver.user.banned,
       approvalStatus: driver.approvalStatus,
       status: driver.status,
+      petFriendly: driver.petFriendly,
       licenseNumber: driver.licenseNumber,
       licenseExpiry: driver.licenseExpiry,
       nationalId: driver.nationalId,
@@ -174,6 +178,7 @@ export class DriversService {
       licenseNumber?: string;
       licenseExpiry?: string;
       nationalId?: string;
+      petFriendly?: boolean;
     },
   ) {
     const driver = await this.prisma.driver.findUnique({ where: { id } });
@@ -191,6 +196,9 @@ export class DriversService {
         ...(data.nationalId !== undefined && {
           nationalId: data.nationalId,
         }),
+        ...(data.petFriendly !== undefined && {
+          petFriendly: data.petFriendly,
+        }),
       },
       include: { user: { select: { name: true, email: true } } },
     });
@@ -202,6 +210,7 @@ export class DriversService {
       licenseNumber: updated.licenseNumber,
       licenseExpiry: updated.licenseExpiry,
       nationalId: updated.nationalId,
+      petFriendly: updated.petFriendly,
     };
   }
 
@@ -219,6 +228,52 @@ export class DriversService {
       id: updated.id,
       [field]: url,
     };
+  }
+
+  /** Create or update the vehicle record for a driver. */
+  async upsertVehicle(
+    driverId: string,
+    data: {
+      type: VehicleType;
+      fuelType?: FuelType | null;
+      make: string;
+      model: string;
+      year: number;
+      color: string;
+      plateNumber: string;
+      capacity?: number;
+    },
+  ) {
+    const driver = await this.prisma.driver.findUnique({ where: { id: driverId } });
+    if (!driver) throw new NotFoundException('Driver not found');
+
+    const vehicle = await this.prisma.vehicle.upsert({
+      where: { driverId },
+      create: {
+        driverId,
+        type: data.type,
+        fuelType: data.fuelType ?? null,
+        make: data.make,
+        model: data.model,
+        year: data.year,
+        color: data.color,
+        plateNumber: data.plateNumber,
+        capacity: data.capacity ?? 4,
+      },
+      update: {
+        type: data.type,
+        fuelType: data.fuelType ?? null,
+        make: data.make,
+        model: data.model,
+        year: data.year,
+        color: data.color,
+        plateNumber: data.plateNumber,
+        capacity: data.capacity ?? 4,
+      },
+    });
+
+    this.logger.log(`Vehicle upserted for driver ${driverId}: ${vehicle.id}`);
+    return vehicle;
   }
 
   /** Delete a driver and their user account. */

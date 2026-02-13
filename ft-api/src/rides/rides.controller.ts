@@ -18,15 +18,20 @@ import { VehicleType } from '../generated/prisma/enums.js';
 
 interface CreateRideBody {
   pickupAddress: string;
+  pickupMainText?: string;
   pickupLat: number;
   pickupLng: number;
   dropoffAddress: string;
+  dropoffMainText?: string;
   dropoffLat: number;
   dropoffLng: number;
   vehicleType?: string;
   passengerNote?: string;
   pickupPhotoUrl?: string;
   routeQuoteId?: string;
+  fuelPreference?: string;
+  petFriendly?: boolean;
+  extraPassengers?: boolean;
 }
 
 @Controller('rides')
@@ -73,15 +78,20 @@ export class RidesController {
 
     return this.ridesService.createRide(session.user.id, {
       pickupAddress: body.pickupAddress,
+      pickupMainText: body.pickupMainText,
       pickupLat: Number(body.pickupLat),
       pickupLng: Number(body.pickupLng),
       dropoffAddress: body.dropoffAddress,
+      dropoffMainText: body.dropoffMainText,
       dropoffLat: Number(body.dropoffLat),
       dropoffLng: Number(body.dropoffLng),
       vehicleType,
       passengerNote: body.passengerNote,
       pickupPhotoUrl: body.pickupPhotoUrl,
       routeQuoteId: body.routeQuoteId,
+      fuelPreference: body.fuelPreference,
+      petFriendly: body.petFriendly ?? false,
+      extraPassengers: body.extraPassengers ?? false,
     });
   }
 

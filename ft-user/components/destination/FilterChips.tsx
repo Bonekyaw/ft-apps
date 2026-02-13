@@ -65,9 +65,11 @@ export function FilterChips() {
   const vehicleType = useRideBookingStore((s) => s.vehicleType);
   const petFriendly = useRideBookingStore((s) => s.petFriendly);
   const fuelPreference = useRideBookingStore((s) => s.fuelPreference);
+  const extraPassengers = useRideBookingStore((s) => s.extraPassengers);
   const setVehicleType = useRideBookingStore((s) => s.setVehicleType);
   const togglePetFriendly = useRideBookingStore((s) => s.togglePetFriendly);
   const setFuelPreference = useRideBookingStore((s) => s.setFuelPreference);
+  const toggleExtraPassengers = useRideBookingStore((s) => s.toggleExtraPassengers);
 
   const vehicleOptions: { key: VehicleFilter; label: string }[] = [
     { key: "ANY", label: t("destination.vehicleAny") },
@@ -128,6 +130,20 @@ export function FilterChips() {
         <Switch
           value={petFriendly}
           onValueChange={togglePetFriendly}
+          trackColor={{ false: colors.border, true: Brand.primary }}
+          thumbColor="#fff"
+        />
+      </View>
+
+      {/* Extra passengers toggle */}
+      <View style={styles.toggleRow}>
+        <MaterialIcons name="group" size={18} color={colors.icon} />
+        <Text style={[styles.toggleLabel, { color: colors.text }]}>
+          {t("destination.extraPassengers")}
+        </Text>
+        <Switch
+          value={extraPassengers}
+          onValueChange={toggleExtraPassengers}
           trackColor={{ false: colors.border, true: Brand.primary }}
           thumbColor="#fff"
         />

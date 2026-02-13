@@ -67,6 +67,6 @@ export class MapsController {
       body.latitude,
       body.longitude,
     );
-    return result ?? { address: null, placeId: null };
+    return result ?? { address: null, placeId: null, name: null };
   }
 }

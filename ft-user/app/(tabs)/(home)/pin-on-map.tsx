@@ -56,6 +56,8 @@ export default function PinOnMapScreen() {
     longitudeDelta: 0.005,
   });
   const [address, setAddress] = useState<string | null>(null);
+  /** Specific place name from reverse geocode (e.g. "Shwedagon Pagoda"). */
+  const [placeName, setPlaceName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -83,6 +85,7 @@ export default function PinOnMapScreen() {
     setRegion(newRegion);
     setIsLoading(true);
     setAddress(null);
+    setPlaceName(null);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -92,8 +95,10 @@ export default function PinOnMapScreen() {
           newRegion.longitude,
         );
         setAddress(result.address);
+        setPlaceName(result.name ?? null);
       } catch {
         setAddress(null);
+        setPlaceName(null);
       } finally {
         setIsLoading(false);
       }
@@ -102,14 +107,22 @@ export default function PinOnMapScreen() {
 
   // Confirm location
   const handleConfirm = useCallback(() => {
+    const fullAddress =
+      address ?? `${region.latitude.toFixed(6)}, ${region.longitude.toFixed(6)}`;
+
+    // Prefer the POI/establishment name from reverse geocode.
+    // Fall back to the first segment of the address only if no name was returned.
+    const mainText =
+      placeName ?? address?.split(",")[0]?.trim() ?? t("destination.pinOnMapTitle");
+
     setStop(activeStopIndex, {
-      address: address ?? `${region.latitude.toFixed(6)}, ${region.longitude.toFixed(6)}`,
+      address: fullAddress,
       latitude: region.latitude,
       longitude: region.longitude,
-      mainText: address?.split(",")[0] ?? t("destination.pinOnMapTitle"),
+      mainText,
     });
     router.back();
-  }, [activeStopIndex, address, region, router, setStop, t]);
+  }, [activeStopIndex, address, placeName, region, router, setStop, t]);
 
   return (
     <View style={styles.screen}>

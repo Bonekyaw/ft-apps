@@ -1,26 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma.service.js';
-import { MatchingService } from './matching.service.js';
+import { MatchingService, type DriverMatchFilters } from './matching.service.js';
 import { AblyPublisherService } from './ably-publisher.service.js';
-
-/**
- * Multi-round dispatch configuration.
- * Each round waits ROUND_INTERVAL_MS, then searches at the given radius.
- * Total ~3 minutes of retries before giving up.
- */
-const ROUND_INTERVAL_MS = 20_000;
-
-const DISPATCH_ROUNDS: { radiusMeters: number }[] = [
-  { radiusMeters: 5_000 }, //  0s  →  5 km
-  { radiusMeters: 8_000 }, // 20s  →  8 km
-  { radiusMeters: 12_000 }, // 40s  → 12 km
-  { radiusMeters: 15_000 }, // 60s  → 15 km
-  { radiusMeters: 20_000 }, // 80s  → 20 km
-  { radiusMeters: 25_000 }, // 100s → 25 km
-  { radiusMeters: 30_000 }, // 120s → 30 km
-  { radiusMeters: 30_000 }, // 140s → 30 km
-  { radiusMeters: 30_000 }, // 160s → 30 km  (~3 min total)
-];
+import { PricingCacheService } from '../pricing/pricing-cache.service.js';
 
 /** Payload published to each driver's private Ably channel. */
 interface DispatchPayload {
@@ -36,17 +18,23 @@ interface DispatchPayload {
   vehicleType: string;
   passengerNote: string | null;
   pickupPhotoUrl: string | null;
+  extraPassengers: boolean;
 }
 
 /** In-memory tracking for active dispatches. */
 interface ActiveDispatch {
   timer: ReturnType<typeof setTimeout> | null;
-  notifiedUserIds: Set<string>;
+  /** userId → timestamp of last notification (allows time-based re-notify). */
+  notifiedDriverTs: Map<string, number>;
+  /** Drivers who explicitly skipped — never re-notify. */
+  skippedUserIds: Set<string>;
   passengerId: string;
   roundIndex: number;
   payload: DispatchPayload;
   pickupLat: number;
   pickupLng: number;
+  /** Rider preference filters forwarded to the matching service. */
+  filters: DriverMatchFilters;
 }
 
 @Injectable()
@@ -58,11 +46,12 @@ export class RideDispatchService {
     private readonly prisma: PrismaService,
     private readonly matching: MatchingService,
     private readonly publisher: AblyPublisherService,
+    private readonly cache: PricingCacheService,
   ) {}
 
   /**
    * Dispatch a newly-created ride to the nearest ONLINE drivers.
-   * Runs up to 9 rounds over ~3 minutes, expanding the search radius.
+   * Runs configurable rounds (set by admin), expanding the search radius.
    * Should be called fire-and-forget after the ride is persisted.
    */
   async dispatchRide(ride: {
@@ -79,6 +68,9 @@ export class RideDispatchService {
     vehicleType: string;
     passengerNote: string | null;
     pickupPhotoUrl: string | null;
+    fuelPreference?: string | null;
+    petFriendly?: boolean;
+    extraPassengers?: boolean;
   }): Promise<void> {
     const payload: DispatchPayload = {
       rideId: ride.id,
@@ -93,22 +85,43 @@ export class RideDispatchService {
       vehicleType: ride.vehicleType,
       passengerNote: ride.passengerNote,
       pickupPhotoUrl: ride.pickupPhotoUrl,
+      extraPassengers: ride.extraPassengers ?? false,
+    };
+
+    const filters: DriverMatchFilters = {
+      vehicleType: ride.vehicleType,
+      fuelType: ride.fuelPreference ?? null,
+      petFriendly: ride.petFriendly ?? false,
+      extraPassengers: ride.extraPassengers ?? false,
     };
 
     const dispatch: ActiveDispatch = {
       timer: null,
-      notifiedUserIds: new Set<string>(),
+      notifiedDriverTs: new Map<string, number>(),
+      skippedUserIds: new Set<string>(),
       passengerId: ride.passengerId,
       roundIndex: 0,
       payload,
       pickupLat: ride.pickupLat,
       pickupLng: ride.pickupLng,
+      filters,
     };
 
     this.activeDispatches.set(ride.id, dispatch);
 
     // Start the first round immediately
     await this.dispatchRound(ride.id);
+  }
+
+  /**
+   * Mark a driver as having explicitly skipped/rejected this ride.
+   * They will NOT be re-notified in subsequent rounds.
+   */
+  markDriverSkipped(rideId: string, userId: string): void {
+    const dispatch = this.activeDispatches.get(rideId);
+    if (!dispatch) return;
+    dispatch.skippedUserIds.add(userId);
+    this.logger.log(`Ride ${rideId}: driver ${userId} marked as skipped`);
   }
 
   /**
@@ -123,7 +136,7 @@ export class RideDispatchService {
     this.activeDispatches.delete(rideId);
 
     // Notify all previously-notified drivers that the ride is no longer available
-    for (const userId of dispatch.notifiedUserIds) {
+    for (const userId of dispatch.notifiedDriverTs.keys()) {
       void this.publisher.publish(
         `driver:private:${userId}`,
         'ride_cancelled',
@@ -142,7 +155,8 @@ export class RideDispatchService {
     const dispatch = this.activeDispatches.get(rideId);
     if (!dispatch) return; // Cancelled between scheduling and execution
 
-    const roundCfg = DISPATCH_ROUNDS[dispatch.roundIndex];
+    const rounds = this.cache.getDispatchRounds();
+    const roundCfg = rounds[dispatch.roundIndex];
     if (!roundCfg) {
       // All rounds exhausted — give up
       await this.handleAllRoundsExhausted(rideId);
@@ -161,49 +175,60 @@ export class RideDispatchService {
     }
 
     this.logger.log(
-      `Ride ${rideId}: dispatch round ${dispatch.roundIndex + 1}/${DISPATCH_ROUNDS.length} ` +
+      `Ride ${rideId}: dispatch round ${dispatch.roundIndex + 1}/${rounds.length} ` +
         `(radius ${roundCfg.radiusMeters}m)`,
     );
 
-    // Find drivers within this round's radius
+    // Find drivers within this round's radius (with rider preference filters)
     const drivers = await this.matching.findNearbyDrivers(
       dispatch.pickupLat,
       dispatch.pickupLng,
       roundCfg.radiusMeters,
+      5,
+      dispatch.filters,
     );
 
-    // Notify only drivers who haven't been notified yet
+    // Notify drivers who haven't skipped AND haven't been notified recently.
+    // If a driver was notified more than the round interval ago and didn't
+    // respond, re-send (their modal countdown has expired by now).
+    const intervalMs = roundCfg.intervalMs;
+    const now = Date.now();
     let newNotifications = 0;
     for (const driver of drivers) {
-      if (dispatch.notifiedUserIds.has(driver.userId)) continue;
+      // Never re-notify drivers who explicitly rejected this ride
+      if (dispatch.skippedUserIds.has(driver.userId)) continue;
+
+      // Skip if notified recently (within this round interval)
+      const lastNotifiedAt = dispatch.notifiedDriverTs.get(driver.userId);
+      if (lastNotifiedAt && now - lastNotifiedAt < intervalMs) continue;
 
       await this.publisher.publish(
         `driver:private:${driver.userId}`,
         'new_ride_request',
         dispatch.payload,
       );
-      dispatch.notifiedUserIds.add(driver.userId);
+      dispatch.notifiedDriverTs.set(driver.userId, now);
       newNotifications++;
     }
 
     this.logger.log(
-      `Ride ${rideId}: notified ${newNotifications} new driver(s) ` +
-        `(${dispatch.notifiedUserIds.size} total)`,
+      `Ride ${rideId}: notified ${newNotifications} driver(s) this round ` +
+        `(${dispatch.notifiedDriverTs.size} tracked, ${dispatch.skippedUserIds.size} skipped)`,
     );
 
     // Move to next round
     dispatch.roundIndex++;
 
-    if (dispatch.roundIndex < DISPATCH_ROUNDS.length) {
-      // Schedule the next round
+    if (dispatch.roundIndex < rounds.length) {
+      // Schedule the next round using the CURRENT round's interval
       dispatch.timer = setTimeout(() => {
         void this.dispatchRound(rideId);
-      }, ROUND_INTERVAL_MS);
+      }, intervalMs);
     } else {
       // Schedule final expiry check after one more interval
       dispatch.timer = setTimeout(() => {
         void this.handleAllRoundsExhausted(rideId);
-      }, ROUND_INTERVAL_MS);
+      }, intervalMs);
     }
   }
 
@@ -220,8 +245,9 @@ export class RideDispatchService {
 
     if (!ride || ride.status !== 'PENDING') return;
 
+    const totalRounds = this.cache.getDispatchRounds().length;
     this.logger.warn(
-      `Ride ${rideId}: all ${DISPATCH_ROUNDS.length} dispatch rounds exhausted — no driver accepted`,
+      `Ride ${rideId}: all ${totalRounds} dispatch rounds exhausted — no driver accepted`,
     );
 
     await this.prisma.ride.update({

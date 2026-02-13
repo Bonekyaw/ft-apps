@@ -54,6 +54,7 @@ interface RideBookingState {
   vehicleType: VehicleFilter;
   petFriendly: boolean;
   fuelPreference: FuelFilter;
+  extraPassengers: boolean;
 
   // Pickup
   pickup: StopLocation | null;
@@ -86,6 +87,7 @@ interface RideBookingState {
   setVehicleType: (type: VehicleFilter) => void;
   togglePetFriendly: () => void;
   setFuelPreference: (pref: FuelFilter) => void;
+  toggleExtraPassengers: () => void;
 
   // Actions — pickup
   setPickup: (location: StopLocation | null) => void;
@@ -136,6 +138,7 @@ const INITIAL_STATE = {
   vehicleType: "ANY" as VehicleFilter,
   petFriendly: false,
   fuelPreference: "ANY" as FuelFilter,
+  extraPassengers: false,
   pickup: null as StopLocation | null,
   pickupNote: "",
   pickupPhotoUri: null as string | null,
@@ -195,6 +198,10 @@ export const useRideBookingStore = create<RideBookingState>()((set, get) => ({
 
   setFuelPreference(pref) {
     set({ fuelPreference: pref });
+  },
+
+  toggleExtraPassengers() {
+    set((s) => ({ extraPassengers: !s.extraPassengers }));
   },
 
   setPickup(location) {

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -9,10 +9,9 @@ import {
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 import { useTranslation } from "@/lib/i18n";
-import { Brand, Colors, FontSize, Spacing, BorderRadius } from "@/constants/theme";
+import { Brand, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRideHistory } from "@/hooks/use-destination-data";
-import type { RideHistoryItem } from "@/lib/api";
 
 interface RecentPlacesProps {
   /** Called when user taps a recent ride destination. */
@@ -31,6 +30,18 @@ export function RecentPlaces({ onSelect }: RecentPlacesProps) {
 
   const { data: rides, isLoading } = useRideHistory();
 
+  // Deduplicate: keep only the most recent ride per unique dropoff address
+  const uniqueRides = useMemo(() => {
+    if (!rides) return [];
+    const seen = new Set<string>();
+    return rides.filter((r) => {
+      const key = r.dropoffAddress;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [rides]);
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -39,7 +50,7 @@ export function RecentPlaces({ onSelect }: RecentPlacesProps) {
     );
   }
 
-  if (!rides || rides.length === 0) {
+  if (uniqueRides.length === 0) {
     return (
       <View style={styles.center}>
         <Text style={[styles.emptyText, { color: colors.textMuted }]}>
@@ -51,39 +62,44 @@ export function RecentPlaces({ onSelect }: RecentPlacesProps) {
 
   return (
     <View style={styles.list}>
-      {rides.map((ride) => (
-        <Pressable
-          key={ride.id}
-          style={[styles.row, { borderBottomColor: colors.border }]}
-          onPress={() =>
-            onSelect({
-              address: ride.dropoffAddress,
-              latitude: ride.dropoffLat,
-              longitude: ride.dropoffLng,
-              mainText: ride.dropoffAddress.split(",")[0],
-            })
-          }
-        >
-          <MaterialIcons name="history" size={20} color={colors.icon} />
-          <View style={styles.rowContent}>
-            <Text
-              style={[styles.rowTitle, { color: colors.text }]}
-              numberOfLines={1}
-            >
-              {ride.dropoffAddress.split(",")[0]}
+      {uniqueRides.map((ride) => {
+        const displayName =
+          ride.dropoffMainText ?? ride.dropoffAddress.split(",")[0];
+
+        return (
+          <Pressable
+            key={ride.id}
+            style={[styles.row, { borderBottomColor: colors.border }]}
+            onPress={() =>
+              onSelect({
+                address: ride.dropoffAddress,
+                latitude: ride.dropoffLat,
+                longitude: ride.dropoffLng,
+                mainText: displayName,
+              })
+            }
+          >
+            <MaterialIcons name="history" size={20} color={colors.icon} />
+            <View style={styles.rowContent}>
+              <Text
+                style={[styles.rowTitle, { color: colors.text }]}
+                numberOfLines={1}
+              >
+                {displayName}
+              </Text>
+              <Text
+                style={[styles.rowSub, { color: colors.textMuted }]}
+                numberOfLines={1}
+              >
+                {ride.dropoffAddress}
+              </Text>
+            </View>
+            <Text style={[styles.fare, { color: colors.textSecondary }]}>
+              {ride.totalFare.toLocaleString()} {ride.currency}
             </Text>
-            <Text
-              style={[styles.rowSub, { color: colors.textMuted }]}
-              numberOfLines={1}
-            >
-              {ride.dropoffAddress}
-            </Text>
-          </View>
-          <Text style={[styles.fare, { color: colors.textSecondary }]}>
-            {ride.totalFare.toLocaleString()} {ride.currency}
-          </Text>
-        </Pressable>
-      ))}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

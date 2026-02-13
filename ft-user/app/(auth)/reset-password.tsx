@@ -8,7 +8,6 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -32,6 +31,7 @@ import {
 import { emailOtp } from "@/lib/auth-client";
 import { validateUserLogin, getErrorMessage } from "@/lib/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { showAlert } from "@/store/alert-store";
 
 const OTP_LENGTH = 6;
 
@@ -93,16 +93,17 @@ export default function ResetPasswordScreen() {
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
     if (!email) {
-      Alert.alert(t("auth.errors.error"), t("auth.resetPassword.noEmail"));
+      showAlert({ title: t("auth.errors.error"), message: t("auth.resetPassword.noEmail") });
       return;
     }
 
     const otpString = otp.join("");
     if (otpString.length !== OTP_LENGTH) {
-      Alert.alert(
-        t("auth.errors.invalidOtp"),
-        t("auth.errors.invalidOtpMessage"),
-      );
+      showAlert({
+        variant: "warning",
+        title: t("auth.errors.invalidOtp"),
+        message: t("auth.errors.invalidOtpMessage"),
+      });
       return;
     }
 
@@ -115,27 +116,28 @@ export default function ResetPasswordScreen() {
       });
 
       if (result.error) {
-        Alert.alert(
-          t("auth.errors.error"),
-          result.error.message || t("auth.errors.unexpectedError"),
-        );
+        showAlert({
+          title: t("auth.errors.error"),
+          message: result.error.message || t("auth.errors.unexpectedError"),
+        });
         return;
       }
 
-      Alert.alert(
-        t("auth.resetPassword.success"),
-        t("auth.resetPassword.successMessage"),
-        [
+      showAlert({
+        variant: "success",
+        title: t("auth.resetPassword.success"),
+        message: t("auth.resetPassword.successMessage"),
+        buttons: [
           {
             text: t("auth.ok"),
             onPress: () => router.replace("/(auth)/sign-in"),
           },
         ],
-      );
+      });
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : t("auth.errors.unexpectedError");
-      Alert.alert(t("auth.errors.error"), message);
+      showAlert({ title: t("auth.errors.error"), message });
     } finally {
       setLoading(false);
     }
@@ -150,7 +152,7 @@ export default function ResetPasswordScreen() {
       await validateUserLogin(email);
     } catch (error: unknown) {
       const message = getErrorMessage(error);
-      Alert.alert(t("auth.errors.failedToResend"), message);
+      showAlert({ title: t("auth.errors.failedToResend"), message });
       setResendLoading(false);
       return;
     }
@@ -158,15 +160,16 @@ export default function ResetPasswordScreen() {
     try {
       const result = await emailOtp.requestPasswordReset({ email });
       if (result.error) {
-        Alert.alert(
-          t("auth.errors.failedToResend"),
-          result.error.message || t("auth.errors.failedToResendMessage"),
-        );
+        showAlert({
+          title: t("auth.errors.failedToResend"),
+          message: result.error.message || t("auth.errors.failedToResendMessage"),
+        });
       } else {
-        Alert.alert(
-          t("auth.errors.otpSent"),
-          t("auth.errors.otpSentMessage"),
-        );
+        showAlert({
+          variant: "success",
+          title: t("auth.errors.otpSent"),
+          message: t("auth.errors.otpSentMessage"),
+        });
         setCountdown(60);
         setCanResend(false);
         setOtp(new Array(OTP_LENGTH).fill(""));
@@ -175,7 +178,7 @@ export default function ResetPasswordScreen() {
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : t("auth.errors.unexpectedError");
-      Alert.alert(t("auth.errors.error"), message);
+      showAlert({ title: t("auth.errors.error"), message });
     } finally {
       setResendLoading(false);
     }

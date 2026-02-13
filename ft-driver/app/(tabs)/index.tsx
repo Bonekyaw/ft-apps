@@ -126,6 +126,34 @@ export default function DriverHomeScreen() {
     };
   }, []);
 
+  // ── When going online, immediately seed driverCoords if missing ──
+  useEffect(() => {
+    if (!isOnline || driverCoords) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (!cancelled) {
+          setDriverCoords({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            heading: pos.coords.heading ?? null,
+          });
+        }
+      } catch {
+        // GPS unavailable — tracker will fill in when ready
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Only trigger when isOnline changes, not on every driverCoords update
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline]);
+
   // ── Subscribe to live GPS from location tracker (zero extra subscriptions) ──
   useEffect(() => {
     if (!isOnline) return;
@@ -168,12 +196,13 @@ export default function DriverHomeScreen() {
         style={styles.map}
         initialRegion={region}
         onRegionChangeComplete={onRegionChangeComplete}
-        showsUserLocation={!isOnline}
+        showsUserLocation
         showsMyLocationButton
         moveOnMarkerPress={false}
         loadingEnabled
       >
-        {/* Car icon marker — shown when driver is online with GPS */}
+        {/* Car icon marker — shown when driver is online with GPS.
+            The 56×56 car icon fully covers the native blue dot underneath. */}
         {isOnline && driverCoords ? (
           <CarMarker
             latitude={driverCoords.latitude}

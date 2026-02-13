@@ -14,6 +14,7 @@ export interface IncomingRideRequest {
   vehicleType: string;
   passengerNote: string | null;
   pickupPhotoUrl: string | null;
+  extraPassengers: boolean;
 }
 
 /** Full details of the ride the driver has accepted. */
@@ -30,6 +31,7 @@ export interface ActiveRide {
   vehicleType: string;
   passengerNote: string | null;
   pickupPhotoUrl: string | null;
+  extraPassengers: boolean;
 }
 
 interface RideState {

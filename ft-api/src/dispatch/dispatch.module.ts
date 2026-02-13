@@ -8,9 +8,10 @@ import { DriverStatusController } from './driver-status.controller.js';
 import { DriverStatusService } from './driver-status.service.js';
 import { MatchingService } from './matching.service.js';
 import { RideDispatchService } from './ride-dispatch.service.js';
+import { PricingModule } from '../pricing/pricing.module.js';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, PricingModule],
   controllers: [DriverStatusController, AblyWebhookController],
   providers: [
     PrismaService,

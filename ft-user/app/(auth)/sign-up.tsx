@@ -7,7 +7,6 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -29,6 +28,7 @@ import type { LocaleCode } from "@/lib/i18n";
 import { createSignUpSchema, type SignUpFormValues } from "@/lib/validations";
 import { authClient, emailOtp } from "@/lib/auth-client";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { showAlert } from "@/store/alert-store";
 
 export default function SignUpScreen() {
   // Warm up Android Chrome Custom Tabs so the OAuth browser opens in-app
@@ -69,10 +69,10 @@ export default function SignUpScreen() {
       });
 
       if (result.error) {
-        Alert.alert(
-          t("auth.errors.signUpFailed"),
-          result.error.message || t("auth.errors.signUpFailedMessage"),
-        );
+        showAlert({
+          title: t("auth.errors.signUpFailed"),
+          message: result.error.message || t("auth.errors.signUpFailedMessage"),
+        });
         return;
       }
 
@@ -82,16 +82,17 @@ export default function SignUpScreen() {
       });
 
       if (otpResult.error) {
-        Alert.alert(
-          t("auth.errors.accountCreated"),
-          t("auth.errors.accountCreatedNoEmail"),
-          [
+        showAlert({
+          variant: "warning",
+          title: t("auth.errors.accountCreated"),
+          message: t("auth.errors.accountCreatedNoEmail"),
+          buttons: [
             {
               text: t("auth.ok"),
               onPress: () => router.replace("/(auth)/sign-in"),
             },
           ],
-        );
+        });
         return;
       }
 
@@ -104,7 +105,7 @@ export default function SignUpScreen() {
         error instanceof Error
           ? error.message
           : t("auth.errors.unexpectedError");
-      Alert.alert(t("auth.errors.error"), message);
+      showAlert({ title: t("auth.errors.error"), message });
     } finally {
       setLoading(false);
     }
@@ -122,7 +123,7 @@ export default function SignUpScreen() {
         error instanceof Error
           ? error.message
           : t("auth.errors.googleSignUpFailed");
-      Alert.alert(t("auth.errors.error"), message);
+      showAlert({ title: t("auth.errors.error"), message });
     } finally {
       setGoogleLoading(false);
     }

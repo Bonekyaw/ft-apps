@@ -7,11 +7,10 @@ import {
   Pressable,
   ActivityIndicator,
   Platform,
-  Alert,
   Image,
   ScrollView,
-  KeyboardAvoidingView,
-  ActionSheetIOS,
+  Keyboard,
+  Modal,
   useWindowDimensions,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -38,6 +37,7 @@ import {
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTabBarVisibility } from "@/context/tab-bar-context";
 import { useRideBookingStore } from "@/store/ride-booking";
+import { showAlert } from "@/store/alert-store";
 
 // Yangon default
 const DEFAULT_LAT = 16.8409;
@@ -83,6 +83,34 @@ export default function SetPickupScreen() {
   const [address, setAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keyboard tracking — directly move the card above the keyboard
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const isKeyboardVisible = keyboardHeight > 0;
+
+  // Photo picker modal state
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -208,10 +236,11 @@ export default function SetPickupScreen() {
   const launchCamera = useCallback(async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission needed",
-        "Camera permission is required to take photos.",
-      );
+      showAlert({
+        variant: "warning",
+        title: "Permission needed",
+        message: "Camera permission is required to take photos.",
+      });
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -228,10 +257,11 @@ export default function SetPickupScreen() {
     const { status } =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission needed",
-        "Gallery permission is required to choose photos.",
-      );
+      showAlert({
+        variant: "warning",
+        title: "Permission needed",
+        message: "Gallery permission is required to choose photos.",
+      });
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -246,29 +276,19 @@ export default function SetPickupScreen() {
   }, [setPickupPhotoUri]);
 
   const handlePhotoPress = useCallback(() => {
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: [t("pickup.cancel"), t("pickup.takePhoto"), t("pickup.choosePhoto")],
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) void launchCamera();
-          else if (buttonIndex === 2) void launchGallery();
-        },
-      );
-    } else {
-      // Android: simple Alert-based selection
-      Alert.alert(t("pickup.photoHint"), undefined, [
-        { text: t("pickup.takePhoto"), onPress: () => void launchCamera() },
-        {
-          text: t("pickup.choosePhoto"),
-          onPress: () => void launchGallery(),
-        },
-        { text: t("pickup.cancel"), style: "cancel" },
-      ]);
-    }
-  }, [launchCamera, launchGallery, t]);
+    setShowPhotoPicker(true);
+  }, []);
+
+  const handlePickerCamera = useCallback(() => {
+    setShowPhotoPicker(false);
+    // Small delay so modal closes before camera opens
+    setTimeout(() => void launchCamera(), 300);
+  }, [launchCamera]);
+
+  const handlePickerGallery = useCallback(() => {
+    setShowPhotoPicker(false);
+    setTimeout(() => void launchGallery(), 300);
+  }, [launchGallery]);
 
   const handleRemovePhoto = useCallback(() => {
     setPickupPhotoUri(null);
@@ -447,16 +467,19 @@ export default function SetPickupScreen() {
       )}
 
       {/* ── Bottom card ── */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      <View
         style={[
           styles.bottomCard,
           {
             backgroundColor: colors.background,
-            bottom: Platform.OS === "ios" ? IOS_TAB_BAR_HEIGHT : 0,
-            paddingBottom:
-              Platform.OS === "ios"
+            bottom: isKeyboardVisible
+              ? keyboardHeight
+              : Platform.OS === "ios"
+                ? IOS_TAB_BAR_HEIGHT
+                : 0,
+            paddingBottom: isKeyboardVisible
+              ? Spacing.sm
+              : Platform.OS === "ios"
                 ? Spacing.md
                 : Math.max(insets.bottom, Spacing.md),
             paddingHorizontal: horizontalPadding,
@@ -464,6 +487,7 @@ export default function SetPickupScreen() {
         ]}
       >
         <ScrollView
+          ref={scrollRef}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           style={styles.bottomScrollView}
@@ -501,6 +525,10 @@ export default function SetPickupScreen() {
             placeholderTextColor={colors.inputPlaceholder}
             value={pickupNote}
             onChangeText={(text) => setPickupNote(text)}
+            onFocus={() => {
+              // Scroll to make the input visible above the keyboard
+              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+            }}
             multiline
             maxLength={200}
             style={[
@@ -560,7 +588,98 @@ export default function SetPickupScreen() {
           </View>
 
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
+
+      {/* ── Photo picker bottom sheet ── */}
+      <Modal
+        visible={showPhotoPicker}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setShowPhotoPicker(false)}
+      >
+        <Pressable
+          style={styles.pickerOverlay}
+          onPress={() => setShowPhotoPicker(false)}
+        />
+        <View
+          style={[
+            styles.pickerSheet,
+            {
+              backgroundColor: colors.background,
+              paddingBottom: Math.max(insets.bottom, Spacing.lg),
+            },
+          ]}
+        >
+          {/* Handle bar */}
+          <View style={styles.pickerHandle} />
+
+          <Text style={[styles.pickerTitle, { color: colors.text }]}>
+            {t("pickup.photoHint")}
+          </Text>
+
+          <View style={styles.pickerOptions}>
+            {/* Camera option */}
+            <Pressable
+              style={[
+                styles.pickerOption,
+                { backgroundColor: colors.inputBackground },
+              ]}
+              onPress={handlePickerCamera}
+            >
+              <View
+                style={[
+                  styles.pickerIconCircle,
+                  { backgroundColor: Brand.primary + "18" },
+                ]}
+              >
+                <MaterialIcons
+                  name="camera-alt"
+                  size={28}
+                  color={Brand.primary}
+                />
+              </View>
+              <Text style={[styles.pickerOptionText, { color: colors.text }]}>
+                {t("pickup.takePhoto")}
+              </Text>
+            </Pressable>
+
+            {/* Gallery option */}
+            <Pressable
+              style={[
+                styles.pickerOption,
+                { backgroundColor: colors.inputBackground },
+              ]}
+              onPress={handlePickerGallery}
+            >
+              <View
+                style={[
+                  styles.pickerIconCircle,
+                  { backgroundColor: "#7C3AED18" },
+                ]}
+              >
+                <MaterialIcons name="photo-library" size={28} color="#7C3AED" />
+              </View>
+              <Text style={[styles.pickerOptionText, { color: colors.text }]}>
+                {t("pickup.choosePhoto")}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Cancel */}
+          <Pressable
+            style={[
+              styles.pickerCancel,
+              { backgroundColor: colors.inputBackground },
+            ]}
+            onPress={() => setShowPhotoPicker(false)}
+          >
+            <Text style={[styles.pickerCancelText, { color: colors.text }]}>
+              {t("pickup.cancel")}
+            </Text>
+          </Pressable>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -773,5 +892,69 @@ const styles = StyleSheet.create({
   },
   submittingText: {
     fontSize: FontSize.sm,
+  },
+
+  // ── Photo picker bottom sheet ──
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  pickerSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  pickerHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#CBD5E1",
+    alignSelf: "center",
+    marginBottom: Spacing.md,
+  },
+  pickerTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: Spacing.lg,
+  },
+  pickerOptions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  pickerOption: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+  },
+  pickerIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  pickerOptionText: {
+    fontSize: FontSize.sm,
+    fontWeight: "600",
+  },
+  pickerCancel: {
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
+  pickerCancelText: {
+    fontSize: FontSize.md,
+    fontWeight: "600",
   },
 });

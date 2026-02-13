@@ -172,4 +172,43 @@ export class PricingController {
     assertAdmin(session);
     return this.pricing.deleteTownshipSurcharge(id);
   }
+
+  // ===================================================
+  // DISPATCH CONFIG — ADMIN CRUD
+  // ===================================================
+
+  /** GET /pricing/dispatch-config — return cached dispatch rounds. */
+  @Get('dispatch-config')
+  getDispatchConfig(@Session() session: UserSession | null) {
+    assertAdmin(session);
+    return this.cache.getDispatchRounds();
+  }
+
+  /** PUT /pricing/dispatch-config — replace all dispatch rounds. */
+  @Put('dispatch-config')
+  async putDispatchConfig(
+    @Session() session: UserSession | null,
+    @Body() body: { rounds: { roundIndex: number; radiusMeters: number; intervalMs: number }[] },
+  ) {
+    assertAdmin(session);
+
+    const rounds = (body.rounds ?? []).map((r, i) => ({
+      roundIndex: r.roundIndex ?? i,
+      radiusMeters: r.radiusMeters,
+      intervalMs: r.intervalMs ?? 20_000,
+    }));
+
+    // Replace all rows in a single transaction
+    await this.prisma.$transaction(async (tx) => {
+      await tx.dispatchConfig.deleteMany();
+      if (rounds.length > 0) {
+        await tx.dispatchConfig.createMany({ data: rounds });
+      }
+    });
+
+    // Refresh the in-memory cache
+    await this.cache.refreshDispatchConfig();
+
+    return this.cache.getDispatchRounds();
+  }
 }

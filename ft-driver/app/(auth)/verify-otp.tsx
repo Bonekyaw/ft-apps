@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -25,6 +24,7 @@ import { useTranslation } from "@/lib/i18n";
 import { authClient, emailOtp } from "@/lib/auth-client";
 import { validateDriverLogin, getErrorMessage } from "@/lib/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { showAlert } from "@/lib/alert-store";
 
 const OTP_LENGTH = 6;
 
@@ -91,15 +91,16 @@ export default function VerifyOTPScreen() {
   const handleVerify = async () => {
     const otpString = otp.join("");
     if (otpString.length !== OTP_LENGTH) {
-      Alert.alert(
-        t("auth.errors.invalidOtp"),
-        t("auth.errors.invalidOtpMessage"),
-      );
+      showAlert({
+        variant: "warning",
+        title: t("auth.errors.invalidOtp"),
+        message: t("auth.errors.invalidOtpMessage"),
+      });
       return;
     }
 
     if (!email) {
-      Alert.alert(t("auth.errors.error"), t("auth.errors.emailNotFound"));
+      showAlert({ title: t("auth.errors.error"), message: t("auth.errors.emailNotFound") });
       router.replace("/(auth)/sign-in");
       return;
     }
@@ -113,10 +114,10 @@ export default function VerifyOTPScreen() {
       });
 
       if (result.error) {
-        Alert.alert(
-          t("auth.errors.verificationFailed"),
-          result.error.message || t("auth.errors.verificationFailedMessage"),
-        );
+        showAlert({
+          title: t("auth.errors.verificationFailed"),
+          message: result.error.message || t("auth.errors.verificationFailedMessage"),
+        });
         setOtp(new Array(OTP_LENGTH).fill(""));
         inputRefs.current[0]?.focus();
       }
@@ -125,7 +126,7 @@ export default function VerifyOTPScreen() {
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : t("auth.errors.unexpectedError");
-      Alert.alert(t("auth.errors.error"), message);
+      showAlert({ title: t("auth.errors.error"), message });
     } finally {
       setLoading(false);
     }
@@ -141,7 +142,7 @@ export default function VerifyOTPScreen() {
       await validateDriverLogin(email);
     } catch (error: unknown) {
       const message = getErrorMessage(error);
-      Alert.alert(t("auth.errors.failedToResend"), message);
+      showAlert({ title: t("auth.errors.failedToResend"), message });
       setResendLoading(false);
       return;
     }
@@ -153,15 +154,16 @@ export default function VerifyOTPScreen() {
       });
 
       if (result.error) {
-        Alert.alert(
-          t("auth.errors.failedToResend"),
-          result.error.message || t("auth.errors.failedToResendMessage"),
-        );
+        showAlert({
+          title: t("auth.errors.failedToResend"),
+          message: result.error.message || t("auth.errors.failedToResendMessage"),
+        });
       } else {
-        Alert.alert(
-          t("auth.errors.otpSent"),
-          t("auth.errors.otpSentMessage"),
-        );
+        showAlert({
+          variant: "success",
+          title: t("auth.errors.otpSent"),
+          message: t("auth.errors.otpSentMessage"),
+        });
         setCountdown(60);
         setCanResend(false);
         setOtp(new Array(OTP_LENGTH).fill(""));
@@ -170,7 +172,7 @@ export default function VerifyOTPScreen() {
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : t("auth.errors.unexpectedError");
-      Alert.alert(t("auth.errors.error"), message);
+      showAlert({ title: t("auth.errors.error"), message });
     } finally {
       setResendLoading(false);
     }

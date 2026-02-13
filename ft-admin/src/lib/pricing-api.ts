@@ -123,3 +123,35 @@ export async function deleteTownshipSurcharge(id: string): Promise<void> {
   });
   if (!res.ok) throw new Error(await res.text());
 }
+
+// ── Dispatch config types ──
+
+export interface DispatchRoundDto {
+  roundIndex: number;
+  radiusMeters: number;
+  intervalMs: number;
+}
+
+// ── Dispatch config API calls ──
+
+export async function getDispatchConfig(): Promise<DispatchRoundDto[]> {
+  const res = await fetch(`${BASE}/pricing/dispatch-config`, {
+    headers: await getAuthHeaders(),
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function putDispatchConfig(
+  rounds: DispatchRoundDto[]
+): Promise<DispatchRoundDto[]> {
+  const res = await fetch(`${BASE}/pricing/dispatch-config`, {
+    method: "PUT",
+    headers: await getAuthHeaders(),
+    credentials: "include",
+    body: JSON.stringify({ rounds }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}

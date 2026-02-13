@@ -49,11 +49,14 @@ import {
   getTownshipSurcharges,
   upsertTownshipSurcharge,
   deleteTownshipSurcharge,
+  getDispatchConfig,
+  putDispatchConfig,
   type PricingConfigDto,
   type DistanceBandDto,
   type SpecialDayRateDto,
   type TimeRuleDto,
   type TownshipSurchargeDto,
+  type DispatchRoundDto,
 } from "@/lib/pricing-api";
 import { PlusIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
@@ -140,6 +143,11 @@ export default function PricingPage() {
     null
   );
 
+  // Dispatch config state
+  const [dispatchRounds, setDispatchRounds] = useState<DispatchRoundDto[]>([]);
+  const [dispatchLoading, setDispatchLoading] = useState(true);
+  const [savingDispatch, setSavingDispatch] = useState(false);
+
   // ── Data loading ──
 
   async function loadConfigs() {
@@ -169,9 +177,23 @@ export default function PricingPage() {
     }
   }
 
+  async function loadDispatch() {
+    setDispatchLoading(true);
+    try {
+      setDispatchRounds(await getDispatchConfig());
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : t("pricing.errors.loadDispatch")
+      );
+    } finally {
+      setDispatchLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadConfigs();
     loadSurcharges();
+    loadDispatch();
   }, []);
 
   // ── Sheet open/close ──
@@ -644,6 +666,154 @@ export default function PricingPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Dispatch config section ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("pricing.dispatch.title")}</CardTitle>
+          <CardDescription>
+            {t("pricing.dispatch.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {dispatchLoading ? (
+            <p className="text-muted-foreground text-sm">{t("common.loading")}</p>
+          ) : (
+            <div className="space-y-4">
+              {dispatchRounds.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  {t("pricing.dispatch.empty")}
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[80px]">{t("pricing.dispatch.round")}</TableHead>
+                      <TableHead>{t("pricing.dispatch.radiusKm")}</TableHead>
+                      <TableHead>{t("pricing.dispatch.intervalSec")}</TableHead>
+                      <TableHead className="w-[48px]" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dispatchRounds.map((round, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{idx + 1}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={0.1}
+                            step={0.1}
+                            className="h-8 w-28"
+                            value={round.radiusMeters / 1000}
+                            onChange={(e) => {
+                              const km = Number(e.target.value) || 0.1;
+                              setDispatchRounds((prev) =>
+                                prev.map((r, i) =>
+                                  i === idx
+                                    ? { ...r, radiusMeters: Math.round(km * 1000) }
+                                    : r
+                                )
+                              );
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={5}
+                            step={5}
+                            className="h-8 w-28"
+                            value={round.intervalMs / 1000}
+                            onChange={(e) => {
+                              const sec = Number(e.target.value) || 5;
+                              setDispatchRounds((prev) =>
+                                prev.map((r, i) =>
+                                  i === idx
+                                    ? { ...r, intervalMs: Math.round(sec * 1000) }
+                                    : r
+                                )
+                              );
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title={t("pricing.dispatch.removeTooltip")}
+                            onClick={() =>
+                              setDispatchRounds((prev) =>
+                                prev
+                                  .filter((_, i) => i !== idx)
+                                  .map((r, i) => ({ ...r, roundIndex: i }))
+                              )
+                            }
+                          >
+                            <Trash2Icon className="size-3.5 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setDispatchRounds((prev) => [
+                      ...prev,
+                      {
+                        roundIndex: prev.length,
+                        radiusMeters: prev.length > 0
+                          ? prev[prev.length - 1].radiusMeters + 500
+                          : 800,
+                        intervalMs: 20_000,
+                      },
+                    ])
+                  }
+                >
+                  <PlusIcon className="mr-1 size-3.5" />
+                  {t("pricing.dispatch.addRound")}
+                </Button>
+
+                <Button
+                  size="sm"
+                  disabled={savingDispatch}
+                  onClick={async () => {
+                    setSavingDispatch(true);
+                    try {
+                      const saved = await putDispatchConfig(
+                        dispatchRounds.map((r, i) => ({
+                          roundIndex: i,
+                          radiusMeters: r.radiusMeters,
+                          intervalMs: r.intervalMs,
+                        }))
+                      );
+                      setDispatchRounds(saved);
+                    } catch (e) {
+                      setError(
+                        e instanceof Error
+                          ? e.message
+                          : t("pricing.errors.saveDispatch")
+                      );
+                    } finally {
+                      setSavingDispatch(false);
+                    }
+                  }}
+                >
+                  {savingDispatch
+                    ? t("pricing.dispatch.saving")
+                    : t("pricing.dispatch.save")}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Pricing config Sheet ── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>

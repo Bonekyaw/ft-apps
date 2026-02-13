@@ -21,6 +21,12 @@ export interface CachedTownshipRule {
   fixedCharge: number;
 }
 
+export interface CachedDispatchRound {
+  roundIndex: number;
+  radiusMeters: number;
+  intervalMs: number;
+}
+
 /**
  * In-memory cache for all pricing configuration and township surcharge rules.
  * Loaded eagerly on startup and invalidated explicitly when admin updates occur.
@@ -35,6 +41,16 @@ export class PricingCacheService implements OnModuleInit {
   /** Township surcharge rules keyed by lowercase township name. */
   private townshipMap = new Map<string, number>();
 
+  /** Dispatch rounds sorted by roundIndex. */
+  private dispatchRounds: CachedDispatchRound[] = [];
+
+  /** Hard-coded fallback when DB has no dispatch config rows. */
+  private static readonly DEFAULT_DISPATCH_ROUNDS: CachedDispatchRound[] = [
+    { roundIndex: 0, radiusMeters: 800, intervalMs: 20_000 },
+    { roundIndex: 1, radiusMeters: 1_500, intervalMs: 20_000 },
+    { roundIndex: 2, radiusMeters: 2_500, intervalMs: 20_000 },
+  ];
+
   constructor(private readonly prisma: PrismaService) {}
 
   // ── Lifecycle ──
@@ -43,14 +59,17 @@ export class PricingCacheService implements OnModuleInit {
     await this.refreshAll();
   }
 
-  /** Reload both caches from the database. */
+  /** Reload all caches from the database. */
   async refreshAll() {
     await Promise.all([
       this.refreshPricingConfigs(),
       this.refreshTownshipRules(),
+      this.refreshDispatchConfig(),
     ]);
     this.logger.log(
-      `Cache refreshed: ${this.configMap.size} pricing configs, ${this.townshipMap.size} township rules`,
+      `Cache refreshed: ${this.configMap.size} pricing configs, ` +
+        `${this.townshipMap.size} township rules, ` +
+        `${this.dispatchRounds.length} dispatch rounds`,
     );
   }
 
@@ -145,5 +164,31 @@ export class PricingCacheService implements OnModuleInit {
     if (destCharge !== undefined) total += destCharge;
 
     return total;
+  }
+
+  // ── Dispatch config ──
+
+  async refreshDispatchConfig() {
+    const rows = await this.prisma.dispatchConfig.findMany({
+      orderBy: { roundIndex: 'asc' },
+    });
+
+    if (rows.length === 0) {
+      this.dispatchRounds = PricingCacheService.DEFAULT_DISPATCH_ROUNDS;
+      return;
+    }
+
+    this.dispatchRounds = rows.map((r) => ({
+      roundIndex: r.roundIndex,
+      radiusMeters: r.radiusMeters,
+      intervalMs: r.intervalMs,
+    }));
+  }
+
+  /** Get cached dispatch rounds (never empty — falls back to defaults). */
+  getDispatchRounds(): CachedDispatchRound[] {
+    return this.dispatchRounds.length > 0
+      ? this.dispatchRounds
+      : PricingCacheService.DEFAULT_DISPATCH_ROUNDS;
   }
 }

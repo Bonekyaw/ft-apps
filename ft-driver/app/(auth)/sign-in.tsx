@@ -7,7 +7,6 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -32,6 +31,7 @@ import {
 import { emailOtp } from "@/lib/auth-client";
 import { validateDriverLogin, getErrorMessage } from "@/lib/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { showAlert } from "@/lib/alert-store";
 
 export default function SignInScreen() {
   const colorScheme = useColorScheme();
@@ -54,7 +54,7 @@ export default function SignInScreen() {
       await validateDriverLogin(trimmedEmail);
     } catch (error: unknown) {
       const message = getErrorMessage(error);
-      Alert.alert(t("auth.errors.signInFailed"), message);
+      showAlert({ title: t("auth.errors.signInFailed"), message });
       setLoading(false);
       return;
     }
@@ -67,10 +67,10 @@ export default function SignInScreen() {
       });
 
       if (result.error) {
-        Alert.alert(
-          t("auth.errors.signInFailed"),
-          result.error.message || t("auth.errors.signInFailedMessage"),
-        );
+        showAlert({
+          title: t("auth.errors.signInFailed"),
+          message: result.error.message || t("auth.errors.signInFailedMessage"),
+        });
       } else {
         // Navigate to OTP verification with the email
         router.push({
@@ -81,7 +81,7 @@ export default function SignInScreen() {
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : t("auth.errors.unexpectedError");
-      Alert.alert(t("auth.errors.error"), message);
+      showAlert({ title: t("auth.errors.error"), message });
     } finally {
       setLoading(false);
     }

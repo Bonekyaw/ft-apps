@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -19,6 +19,8 @@ import { setActiveRide as setTrackerActiveRide } from "@/lib/location-tracker";
 import { acceptRide, skipRide, getErrorMessage } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { Brand, BorderRadius, FontSize, Spacing } from "@/constants/theme";
+import { showAlert } from "@/lib/alert-store";
+import PhotoViewerModal from "@/components/ui/photo-viewer-modal";
 
 /** Countdown duration in seconds. */
 const COUNTDOWN_SECONDS = 15;
@@ -31,6 +33,7 @@ export default function RideRequestModal({ request }: Props) {
   const { t } = useTranslation();
   const [remaining, setRemaining] = useState(COUNTDOWN_SECONDS);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const progressAnim = useRef(new Animated.Value(1)).current;
   const clearIncomingRequest = useRideStore((s) => s.clearIncomingRequest);
   const setActiveRide = useRideStore((s) => s.setActiveRide);
@@ -94,6 +97,7 @@ export default function RideRequestModal({ request }: Props) {
         vehicleType: request.vehicleType,
         passengerNote: request.passengerNote,
         pickupPhotoUrl: request.pickupPhotoUrl,
+        extraPassengers: request.extraPassengers ?? false,
       };
 
       setActiveRide(ride);
@@ -108,13 +112,14 @@ export default function RideRequestModal({ request }: Props) {
       setIsAccepting(false);
       const msg = getErrorMessage(err);
       if (msg.includes("409")) {
-        Alert.alert(
-          t("rideRequest.rideTaken"),
-          t("rideRequest.rideTakenMessage"),
-        );
+        showAlert({
+          variant: "warning",
+          title: t("rideRequest.rideTaken"),
+          message: t("rideRequest.rideTakenMessage"),
+        });
         clearIncomingRequest();
       } else {
-        Alert.alert(t("auth.errors.error"), msg);
+        showAlert({ title: t("auth.errors.error"), message: msg });
       }
     }
   };
@@ -198,7 +203,7 @@ export default function RideRequestModal({ request }: Props) {
         </View>
 
         {/* ── Extra info ── */}
-        {(request.vehicleType || request.passengerNote) && (
+        {(request.vehicleType || request.passengerNote || request.pickupPhotoUrl || request.extraPassengers) && (
           <View style={styles.extraSection}>
             {request.vehicleType ? (
               <View style={styles.extraRow}>
@@ -208,6 +213,14 @@ export default function RideRequestModal({ request }: Props) {
                   color="#64748B"
                 />
                 <Text style={styles.extraText}>{request.vehicleType}</Text>
+              </View>
+            ) : null}
+            {request.extraPassengers ? (
+              <View style={styles.extraRow}>
+                <MaterialIcons name="group" size={16} color={Brand.warning} />
+                <Text style={[styles.extraText, { color: Brand.warning, fontWeight: '600' }]}>
+                  {t("rideRequest.extraPassengers")}
+                </Text>
               </View>
             ) : null}
             {request.passengerNote ? (
@@ -222,8 +235,35 @@ export default function RideRequestModal({ request }: Props) {
                 </Text>
               </View>
             ) : null}
+            {request.pickupPhotoUrl ? (
+              <Pressable
+                style={styles.extraRow}
+                onPress={() => setPhotoModalVisible(true)}
+              >
+                <MaterialIcons
+                  name="photo-camera"
+                  size={16}
+                  color="#64748B"
+                />
+                <Image
+                  source={{ uri: request.pickupPhotoUrl }}
+                  style={styles.pickupPhoto}
+                  resizeMode="cover"
+                />
+                <MaterialIcons name="zoom-in" size={16} color="#94A3B8" />
+              </Pressable>
+            ) : null}
           </View>
         )}
+
+        {/* Photo viewer modal */}
+        {request.pickupPhotoUrl ? (
+          <PhotoViewerModal
+            visible={photoModalVisible}
+            uri={request.pickupPhotoUrl}
+            onClose={() => setPhotoModalVisible(false)}
+          />
+        ) : null}
 
         {/* ── Buttons ── */}
         <View style={styles.actions}>
@@ -390,6 +430,12 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: "#64748B",
     flex: 1,
+  },
+  pickupPhoto: {
+    width: 120,
+    height: 90,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: "#F1F5F9",
   },
 
   // Buttons

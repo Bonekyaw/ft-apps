@@ -69,6 +69,14 @@ enum CancellationReason {
   OTHER
 }
 
+enum FuelType {
+  CNG
+  PETROL
+  ELECTRIC
+  DIESEL
+  HYBRID
+}
+
 enum PaymentMethod {
   CASH
   CARD
@@ -190,6 +198,9 @@ model Driver {
   licenseImageUrl    String?
   nationalIdImageUrl String?
 
+  // Preferences
+  petFriendly Boolean @default(false)
+
   // Stats
   totalRides    Int     @default(0)
   totalEarnings Decimal @default(0) @db.Decimal(10, 2)
@@ -218,6 +229,7 @@ model Vehicle {
 
   // Vehicle details
   type        VehicleType @default(ECONOMY)
+  fuelType    FuelType?
   make        String // e.g., Toyota
   model       String // e.g., Camry
   year        Int
@@ -275,15 +287,22 @@ model Ride {
   status      RideStatus  @default(PENDING)
   vehicleType VehicleType @default(ECONOMY)
 
+  // Rider preferences (for matching & audit)
+  fuelPreference  String?
+  petFriendly     Boolean @default(false)
+  extraPassengers Boolean @default(false)
+
   // Pickup location
-  pickupAddress String
-  pickupLat     Decimal @db.Decimal(10, 8)
-  pickupLng     Decimal @db.Decimal(11, 8)
+  pickupAddress  String
+  pickupMainText String? // User-facing place name (e.g. "Sule Pagoda")
+  pickupLat      Decimal @db.Decimal(10, 8)
+  pickupLng      Decimal @db.Decimal(11, 8)
 
   // Dropoff location
-  dropoffAddress String
-  dropoffLat     Decimal @db.Decimal(10, 8)
-  dropoffLng     Decimal @db.Decimal(11, 8)
+  dropoffAddress  String
+  dropoffMainText String? // User-facing place name (e.g. "Shwedagon Pagoda")
+  dropoffLat      Decimal @db.Decimal(10, 8)
+  dropoffLng      Decimal @db.Decimal(11, 8)
 
   // Route info (from Mapbox)
   distanceMeters  Int? // Total distance in meters
@@ -600,6 +619,18 @@ model TownshipSurcharge {
   updatedAt DateTime @updatedAt
 
   @@map("township_surcharge")
+}
+
+model DispatchConfig {
+  id           String @id @default(cuid())
+  roundIndex   Int    @unique          // 0, 1, 2 (ordering)
+  radiusMeters Int                     // e.g. 800, 1500, 2500
+  intervalMs   Int    @default(20000)  // time before next round (ms)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("dispatch_config")
 }
 
 model SurgeZone {
