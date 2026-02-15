@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
+  Animated,
+  Platform,
   type ViewStyle,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -16,6 +18,92 @@ import {
   MAX_STOPS,
   type StopLocation,
 } from "@/store/ride-booking";
+
+// ── Neon glow constants ──
+const NEON_COLOR = Brand.primary; // "#FFB800" taxi yellow
+const NEON_DIM = "rgba(255, 184, 0, 0.3)";
+const NEON_BRIGHT = "rgba(255, 184, 0, 0.9)";
+
+// ---------------------------------------------------------------------------
+// NeonRow — animated neon-glow wrapper around the active input row
+// ---------------------------------------------------------------------------
+
+function NeonRow({
+  isActive,
+  children,
+  style,
+}: {
+  isActive: boolean;
+  children: React.ReactNode;
+  style?: ViewStyle | ViewStyle[];
+}) {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isActive) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: false,
+          }),
+          Animated.timing(pulse, {
+            toValue: 0,
+            duration: 1200,
+            useNativeDriver: false,
+          }),
+        ]),
+      );
+      loop.start();
+      return () => loop.stop();
+    }
+    pulse.setValue(0);
+  }, [isActive, pulse]);
+
+  if (!isActive) {
+    return <View style={style}>{children}</View>;
+  }
+
+  const borderColor = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [NEON_DIM, NEON_BRIGHT],
+  });
+
+  const shadowOpacity = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.25, 0.75],
+  });
+
+  const shadowRadius = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [4, 14],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          borderColor,
+          borderWidth: 1.5,
+          ...(Platform.OS === "ios"
+            ? {
+                shadowColor: NEON_COLOR,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity,
+                shadowRadius,
+              }
+            : { elevation: 6 }),
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 interface StopListInputProps {
   /** Called when user taps a stop row to start searching. */
@@ -68,8 +156,8 @@ export function StopListInput({ onPressStop, onPinOnMap }: StopListInputProps) {
 
           return (
             <View key={`stop-${index}`} style={styles.rowWrapper}>
-              <Pressable
-                onPress={() => onPressStop(index)}
+              <NeonRow
+                isActive={isActive}
                 style={[
                   styles.row,
                   {
@@ -78,18 +166,23 @@ export function StopListInput({ onPressStop, onPinOnMap }: StopListInputProps) {
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.rowText,
-                    stop
-                      ? { color: colors.text }
-                      : { color: colors.inputPlaceholder },
-                  ]}
-                  numberOfLines={1}
+                <Pressable
+                  onPress={() => onPressStop(index)}
+                  style={styles.rowInner}
                 >
-                  {stop?.mainText ?? stop?.address ?? label}
-                </Text>
-              </Pressable>
+                  <Text
+                    style={[
+                      styles.rowText,
+                      stop
+                        ? { color: colors.text }
+                        : { color: colors.inputPlaceholder },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {stop?.mainText ?? stop?.address ?? label}
+                  </Text>
+                </Pressable>
+              </NeonRow>
 
               {/* Pin on map icon */}
               <Pressable
@@ -181,11 +274,15 @@ const styles = StyleSheet.create({
   },
   row: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
     height: 46,
     borderRadius: BorderRadius.sm,
     borderWidth: 1.5,
+    overflow: "hidden",
+  },
+  rowInner: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.sm,
   },
   rowText: {

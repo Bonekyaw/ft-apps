@@ -6,10 +6,12 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  Vibration,
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Audio } from "expo-av";
 import {
   useRideStore,
   type IncomingRideRequest,
@@ -39,13 +41,48 @@ export default function RideRequestModal({ request }: Props) {
   const clearAllRequests = useRideStore((s) => s.clearAllRequests);
   const setActiveRide = useRideStore((s) => s.setActiveRide);
 
-  // ── Haptic alert on mount ────────────────────────────────
+  // ── Sound + vibration alert on mount ─────────────────────
+  const soundRef = useRef<Audio.Sound | null>(null);
+
   useEffect(() => {
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    const timer = setTimeout(() => {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    }, 500);
-    return () => clearTimeout(timer);
+    let cancelled = false;
+
+    // 1. Aggressive vibration pattern: three strong pulses
+    //    [wait, vibrate, pause, vibrate, pause, vibrate] (ms)
+    Vibration.vibrate([0, 400, 200, 400, 200, 400]);
+
+    // 2. Play notification chime (works even in silent mode on iOS)
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+        const { sound } = await Audio.Sound.createAsync(
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          require("@/assets/sounds/ride-request.wav"),
+          { shouldPlay: true, volume: 1.0 },
+        );
+        if (cancelled) {
+          await sound.unloadAsync();
+          return;
+        }
+        soundRef.current = sound;
+      } catch {
+        // Sound playback is non-critical — vibration still works
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      Vibration.cancel();
+      if (soundRef.current) {
+        void soundRef.current.stopAsync().then(() =>
+          soundRef.current?.unloadAsync(),
+        );
+        soundRef.current = null;
+      }
+    };
   }, []);
 
   // ── Acknowledge: tell backend we are NOW viewing this request ──
